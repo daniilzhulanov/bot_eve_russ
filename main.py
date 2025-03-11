@@ -1,13 +1,10 @@
 import telebot
 import random
-import os
 
-TOKEN = os.environ.get("TOKEN")
-if not TOKEN:
-    raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
+# Замените на ваш токен от @BotFather
+TOKEN = "8024513830:AAGsPysnZfL4SraXDlbLL-QYqWiyj7g_yso"
 bot = telebot.TeleBot(TOKEN)
 
-# Тестовый набор слов (вместо массива words)
 words = {
     "агент": ["агЕнт", "Агент"],
     "агрономия": ["агронОмия", "агрОномия"],
@@ -460,26 +457,19 @@ errors_menu_keyboard.add("Главное меню", "Тренировать ош
 # Приветственное сообщение и главное меню
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    user_id = message.chat.id
     bot.send_message(
-        user_id,
+        message.chat.id,
         "Привет! Я помогу тебе тренировать ударения. Выбери действие:",
         reply_markup=main_menu_keyboard
     )
     # Инициализируем данные пользователя
-    user_data[user_id] = {'errors': [], 'training_mode': None}
-    print(f"Пользователь {user_id} начал работу")  # Отладка
+    user_data[message.chat.id] = {'errors': [], 'training_mode': None}
 
 # Обработчик текстовых сообщений
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     user_id = message.chat.id
     text = message.text
-    print(f"Сообщение от {user_id}: '{text}'")  # Отладка
-
-    # Инициализация данных пользователя, если их нет
-    if user_id not in user_data:
-        user_data[user_id] = {'errors': [], 'training_mode': None}
 
     if text == "Тренировать":
         start_training(message, use_errors=False)
@@ -489,26 +479,23 @@ def handle_message(message):
         send_main_menu(message)
     elif text == "Тренировать ошибки":
         start_training(message, use_errors=True)
-    elif user_data[user_id]['training_mode'] is not None:
+    elif user_id in user_data and user_data[user_id]['training_mode'] is not None:
         check_answer(message)
     else:
         bot.send_message(user_id, "Пожалуйста, используй кнопки для навигации.", reply_markup=main_menu_keyboard)
 
 # Функция для отправки главного меню
 def send_main_menu(message):
-    user_id = message.chat.id
     bot.send_message(
-        user_id,
+        message.chat.id,
         "Выбери действие:",
         reply_markup=main_menu_keyboard
     )
-    user_data[user_id]['training_mode'] = None
-    print(f"Пользователь {user_id} вернулся в главное меню")  # Отладка
+    user_data[message.chat.id]['training_mode'] = None
 
 # Функция для начала тренировки
 def start_training(message, use_errors=False):
     user_id = message.chat.id
-    print(f"Запуск тренировки для {user_id}, use_errors={use_errors}")  # Отладка
     if use_errors and not user_data[user_id]['errors']:
         bot.send_message(user_id, "У тебя пока нет ошибок для тренировки.", reply_markup=main_menu_keyboard)
         return
@@ -523,9 +510,8 @@ def send_question(message):
     else:
         current_words = words
 
-    print(f"Слова для вопроса: {len(current_words)}")  # Отладка
     if not current_words:
-        bot.send_message(user_id, "Список слов пуст. Добавь слова для тренировки.", reply_markup=main_menu_keyboard)
+        bot.send_message(user_id, "Список слов пуст. Пожалуйста, добавь слова в массив words.", reply_markup=main_menu_keyboard)
         user_data[user_id]['training_mode'] = None
         return
 
@@ -539,22 +525,18 @@ def send_question(message):
 
     markup = telebot.types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
     for option in options:
-        markup.add(option)
+        markup.add(option)  # Кнопки остаются стандартными
     markup.add("Главное меню")  # Кнопка для возврата в главное меню
     bot.send_message(
         user_id,
         f"Выбери правильное ударение: {word}",
         reply_markup=markup
     )
-    print(f"Вопрос отправлен: {word}, варианты: {options}")  # Отладка
 
 # Функция для проверки ответа
 def check_answer(message):
     user_id = message.chat.id
-    text = message.text
-    print(f"Проверка ответа от {user_id}: '{text}'")  # Отладка
-
-    if text == "Главное меню":
+    if message.text == "Главное меню":
         send_main_menu(message)
         return
 
@@ -562,20 +544,20 @@ def check_answer(message):
     word = user_data[user_id]['current_word']
     training_mode = user_data[user_id]['training_mode']
 
-    if text == correct_option:
+    if message.text == correct_option:
         bot.send_message(user_id, f"✅ Правильно! {correct_option}")
+        # Удаляем слово из ошибок только в режиме тренировки ошибок
         if training_mode == 'errors' and word in user_data[user_id]['errors']:
             user_data[user_id]['errors'].remove(word)
-            print(f"Слово '{word}' удалено из ошибок пользователя {user_id}")  # Отладка
-            if not user_data[user_id]['errors']:
+            if not user_data[user_id]['errors']:  # Если ошибок больше нет
                 bot.send_message(user_id, "🎉 Все ошибки исправлены!", reply_markup=main_menu_keyboard)
                 user_data[user_id]['training_mode'] = None
                 return
     else:
         bot.send_message(user_id, f"❌ Неправильно. Правильный ответ: {correct_option}")
+        # Добавляем слово в список ошибок только в режиме обычной тренировки
         if training_mode == 'all' and word not in user_data[user_id]['errors']:
             user_data[user_id]['errors'].append(word)
-            print(f"Слово '{word}' добавлено в ошибки пользователя {user_id}")  # Отладка
 
     # Отправляем следующий вопрос
     send_question(message)
@@ -584,7 +566,6 @@ def check_answer(message):
 def show_errors_menu(message):
     user_id = message.chat.id
     errors = user_data[user_id]['errors']
-    print(f"Показ ошибок для {user_id}: {errors}")  # Отладка
     if not errors:
         bot.send_message(user_id, "У тебя пока нет ошибок.", reply_markup=main_menu_keyboard)
     else:
@@ -596,6 +577,4 @@ def show_errors_menu(message):
         )
 
 # Запуск бота
-if __name__ == "__main__":
-    print("Бот запущен...")
-    bot.polling(none_stop=True)
+bot.polling()
