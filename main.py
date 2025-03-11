@@ -446,6 +446,30 @@ words = {
     "языковая колбаса": ["языкОвая колбаса", "языковАя колбаса"],
     "языковая система": ["языковАя система", "языкОвая система"]
 }
+python
+
+Свернуть
+
+Перенос
+
+Копировать
+import os
+import random
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
+# Загрузка токена из переменной окружения
+TOKEN = os.environ.get("TOKEN")
+if not TOKEN:
+    raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
+
+# Словарь слов с вариантами ударений (оставлен без изменений)
+words = {
+    "агент": ["агЕнт", "Агент"],
+    "агрономия": ["агронОмия", "агрОномия"],
+    # ... (остальные слова остаются как в вашем коде)
+}
+
 # Хранилище данных пользователей
 user_data = {}
 
@@ -465,19 +489,23 @@ application = Application.builder().token(TOKEN).build()
 # Приветственное сообщение и главное меню
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
-    print(f"send_welcome called for user {user_id}")
+    print(f"send_welcome: User {user_id} started bot")
     await update.message.reply_text(
         "Привет! Я помогу тебе тренировать ударения. Выбери действие:",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
-    user_data[user_id] = {'errors': [], 'training_mode': None}
+    # Инициализация данных пользователя
+    user_data[user_id] = {'errors': [], 'training_mode': None, 'current_word': None, 'correct_option': None}
     print(f"User {user_id} initialized with data: {user_data[user_id]}")
 
 # Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
-    text = update.message.text
+    text = update.message.text.strip()  # Убираем лишние пробелы
     print(f"handle_message: Received '{text}' from user {user_id}")
+
+    # Приводим текст к нижнему регистру для надёжности
+    text_lower = text.lower()
 
     if text == "Тренировать":
         print(f"Matched 'Тренировать' for user {user_id}")
@@ -504,18 +532,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # Функция для отправки главного меню
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
-    print(f"send_main_menu called for user {user_id}")
+    print(f"send_main_menu: Returning user {user_id} to main menu")
     await update.message.reply_text(
         "Выбери действие:",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
     user_data[user_id]['training_mode'] = None
-    print(f"User {user_id} returned to main menu")
 
 # Функция для начала тренировки
 async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, use_errors=False) -> None:
     user_id = update.effective_chat.id
-    print(f"start_training called for user {user_id}, use_errors={use_errors}")
+    print(f"start_training: Starting for user {user_id}, use_errors={use_errors}")
+
+    if user_id not in user_data:
+        print(f"User {user_id} not in user_data, initializing")
+        user_data[user_id] = {'errors': [], 'training_mode': None, 'current_word': None, 'correct_option': None}
+
     if use_errors and not user_data[user_id]['errors']:
         print(f"No errors found for user {user_id}")
         await update.message.reply_text(
@@ -523,6 +555,7 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, use
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
         return
+
     user_data[user_id]['training_mode'] = 'errors' if use_errors else 'all'
     print(f"Training mode set to '{user_data[user_id]['training_mode']}' for user {user_id}")
     await send_question(update, context)
@@ -530,15 +563,15 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, use
 # Функция для отправки вопроса
 async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
-    print(f"send_question called for user {user_id}, training_mode={user_data[user_id]['training_mode']}")
+    print(f"send_question: Preparing question for user {user_id}, mode={user_data[user_id]['training_mode']}")
 
     # Выбираем слова в зависимости от режима
     if user_data[user_id]['training_mode'] == 'errors':
         current_words = {word: words[word] for word in user_data[user_id]['errors']}
-        print(f"Errors mode, current_words: {list(current_words.keys())}")
+        print(f"Errors mode, words: {list(current_words.keys())}")
     else:
         current_words = words
-        print(f"All mode, current_words keys: {list(current_words.keys())[:5]}")
+        print(f"All mode, words sample: {list(current_words.keys())[:5]}")
 
     if not current_words:
         print(f"No words available for user {user_id}")
@@ -557,23 +590,23 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_data[user_id]['current_word'] = word
     user_data[user_id]['correct_option'] = correct_option
 
+    # Формируем клавиатуру с вариантами ответа
     markup = {
-        "keyboard": [[{"text": option}] for option in options] + [{"text": "Главное меню"}],
+        "keyboard": [[{"text": option}] for option in options] + [[{"text": "Главное меню"}]],
         "resize_keyboard": True,
         "one_time_keyboard": True
     }
-    print(f"Sending question to user {user_id} with markup: {markup}")
+    print(f"Sending question to user {user_id}")
     await update.message.reply_text(
         f"Выбери правильное ударение: {word}",
         reply_markup=markup
     )
-    print(f"Question successfully sent to user {user_id}")
 
 # Функция для проверки ответа
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
-    text = update.message.text
-    print(f"check_answer called for user {user_id}, answer: {text}")
+    text = update.message.text.strip()
+    print(f"check_answer: Received '{text}' from user {user_id}")
 
     if text == "Главное меню":
         await send_main_menu(update, context)
@@ -589,9 +622,11 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     training_mode = user_data[user_id]['training_mode']
 
     if text == correct_option:
+        print(f"Correct answer for user {user_id}: {correct_option}")
         await update.message.reply_text(f"✅ Правильно! {correct_option}")
         if training_mode == 'errors' and word in user_data[user_id]['errors']:
             user_data[user_id]['errors'].remove(word)
+            print(f"Removed {word} from errors for user {user_id}")
             if not user_data[user_id]['errors']:
                 await update.message.reply_text(
                     "🎉 Все ошибки исправлены!",
@@ -600,16 +635,18 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 user_data[user_id]['training_mode'] = None
                 return
     else:
+        print(f"Wrong answer for user {user_id}: {text}, correct: {correct_option}")
         await update.message.reply_text(f"❌ Неправильно. Правильный ответ: {correct_option}")
         if training_mode == 'all' and word not in user_data[user_id]['errors']:
             user_data[user_id]['errors'].append(word)
+            print(f"Added {word} to errors for user {user_id}")
 
     await send_question(update, context)
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
-    print(f"show_errors_menu called for user {user_id}")
+    print(f"show_errors_menu: Showing errors for user {user_id}")
     errors = user_data[user_id]['errors']
     if not errors:
         await update.message.reply_text(
