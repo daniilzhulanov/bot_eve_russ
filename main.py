@@ -447,16 +447,17 @@ words = {
     "языковая система": ["языковАя система", "языкОвая система"]
 }
 
+# Хранилище данных пользователей
 user_data = {}
 
 # Клавиатура для главного меню
 main_menu_keyboard = [
-    [{"text": "Тренировать"}, {"text": "Ошибки"}]
+    [{"text": "Тренировать"}, {"text": "Ошибки"}]  # Уже корректно: список списков
 ]
 
 # Клавиатура для меню ошибок
 errors_menu_keyboard = [
-    [{"text": "Главное меню"}, {"text": "Тренировать ошибки"}]
+    [{"text": "Главное меню"}, {"text": "Тренировать ошибки"}]  # Уже корректно
 ]
 
 # Инициализация приложения
@@ -470,18 +471,14 @@ async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "Привет! Я помогу тебе тренировать ударения. Выбери действие:",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
-    # Инициализация данных пользователя
     user_data[user_id] = {'errors': [], 'training_mode': None, 'current_word': None, 'correct_option': None}
     print(f"User {user_id} initialized with data: {user_data[user_id]}")
 
 # Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
-    text = update.message.text.strip()  # Убираем лишние пробелы
+    text = update.message.text.strip()
     print(f"handle_message: Received '{text}' from user {user_id}")
-
-    # Приводим текст к нижнему регистру для надёжности
-    text_lower = text.lower()
 
     if text == "Тренировать":
         print(f"Matched 'Тренировать' for user {user_id}")
@@ -541,7 +538,6 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_id = update.effective_chat.id
     print(f"send_question: Preparing question for user {user_id}, mode={user_data[user_id]['training_mode']}")
 
-    # Выбираем слова в зависимости от режима
     if user_data[user_id]['training_mode'] == 'errors':
         current_words = {word: words[word] for word in user_data[user_id]['errors']}
         print(f"Errors mode, words: {list(current_words.keys())}")
@@ -566,13 +562,15 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_data[user_id]['current_word'] = word
     user_data[user_id]['correct_option'] = correct_option
 
-    # Формируем клавиатуру с вариантами ответа
+    # Исправляем формирование клавиатуры
+    keyboard = [[{"text": option}] for option in options]  # Каждый вариант в отдельной строке
+    keyboard.append([{"text": "Главное меню"}])  # Добавляем кнопку "Главное меню" как отдельную строку
     markup = {
-        "keyboard": [[{"text": option}] for option in options] + [[{"text": "Главное меню"}]],
+        "keyboard": keyboard,
         "resize_keyboard": True,
         "one_time_keyboard": True
     }
-    print(f"Sending question to user {user_id}")
+    print(f"Sending question to user {user_id} with keyboard: {keyboard}")
     await update.message.reply_text(
         f"Выбери правильное ударение: {word}",
         reply_markup=markup
