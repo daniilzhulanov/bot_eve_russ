@@ -1,10 +1,14 @@
-import telebot
+import os
 import random
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Замените на ваш токен от @BotFather
-TOKEN = "8024513830:AAGsPysnZfL4SraXDlbLL-QYqWiyj7g_yso"
-bot = telebot.TeleBot(TOKEN)
+# Загрузка токена из переменной окружения
+TOKEN = os.environ.get("TOKEN")
+if not TOKEN:
+    raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
+# Пример структуры words (добавьте свои слова)
 words = {
     "агент": ["агЕнт", "Агент"],
     "агрономия": ["агронОмия", "агрОномия"],
@@ -416,7 +420,7 @@ words = {
     "убыстрить": ["убыстрИть", "убЫстрить"],
     "углубить": ["углубИть", "углУбить"],
     "уговор": ["уговОр", "угОвор"],
-    "укрепит": ["укрепИт", "укрЕпит"],
+    "укрепит": ["укрЕпит", "укрепИт"],
     "умерший": ["умЕрший", "умершИй"],
     "упрочение": ["упрОчение", "упрочЕние"],
     "факсимиле": ["факсИмиле", "фАксимиле"],
@@ -447,134 +451,173 @@ words = {
 user_data = {}
 
 # Клавиатура для главного меню
-main_menu_keyboard = telebot.types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-main_menu_keyboard.add("Тренировать", "Ошибки")
+main_menu_keyboard = [
+    [{"text": "Тренировать"}, {"text": "Ошибки"}]
+]
 
 # Клавиатура для меню ошибок
-errors_menu_keyboard = telebot.types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-errors_menu_keyboard.add("Главное меню", "Тренировать ошибки")
+errors_menu_keyboard = [
+    [{"text": "Главное меню"}, {"text": "Тренировать ошибки"}]
+]
+
+# Инициализация приложения
+application = Application.builder().token(TOKEN).build()
 
 # Приветственное сообщение и главное меню
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.send_message(
-        message.chat.id,
-        "Привет! Я помогу тебе тренировать ударения. Выбери действие:",
-        reply_markup=main_menu_keyboard
-    )
-    # Инициализируем данные пользователя
-    user_data[message.chat.id] = {'errors': [], 'training_mode': None}
+async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        await update.message.reply_text(
+            "Привет! Я помогу тебе тренировать ударения. Выбери действие:",
+            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
+        )
+        user_id = update.effective_chat.id
+        user_data[user_id] = {'errors': [], 'training_mode': None}
+    except Exception as e:
+        await update.message.reply_text("Произошла ошибка при запуске. Попробуй снова с /start.")
+        print(f"Ошибка в send_welcome: {e}")
 
 # Обработчик текстовых сообщений
-@bot.message_handler(func=lambda message: True)
-def handle_message(message):
-    user_id = message.chat.id
-    text = message.text
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        user_id = update.effective_chat.id
+        text = update.message.text
 
-    if text == "Тренировать":
-        start_training(message, use_errors=False)
-    elif text == "Ошибки":
-        show_errors_menu(message)
-    elif text == "Главное меню":
-        send_main_menu(message)
-    elif text == "Тренировать ошибки":
-        start_training(message, use_errors=True)
-    elif user_id in user_data and user_data[user_id]['training_mode'] is not None:
-        check_answer(message)
-    else:
-        bot.send_message(user_id, "Пожалуйста, используй кнопки для навигации.", reply_markup=main_menu_keyboard)
+        if text == "Тренировать":
+            await start_training(update, context, use_errors=False)
+        elif text == "Ошибки":
+            await show_errors_menu(update, context)
+        elif text == "Главное меню":
+            await send_main_menu(update, context)
+        elif text == "Тренировать ошибки":
+            await start_training(update, context, use_errors=True)
+        elif user_id in user_data and user_data[user_id]['training_mode'] is not None:
+            await check_answer(update, context)
+        else:
+            await update.message.reply_text("Пожалуйста, используй кнопки для навигации.", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+    except Exception as e:
+        await update.message.reply_text("Что-то пошло не так. Вернись в меню с помощью /start.")
+        print(f"Ошибка в handle_message: {e}")
 
 # Функция для отправки главного меню
-def send_main_menu(message):
-    bot.send_message(
-        message.chat.id,
-        "Выбери действие:",
-        reply_markup=main_menu_keyboard
-    )
-    user_data[message.chat.id]['training_mode'] = None
+async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        user_id = update.effective_chat.id
+        await update.message.reply_text(
+            "Выбери действие:",
+            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
+        )
+        user_data[user_id]['training_mode'] = None
+    except Exception as e:
+        await update.message.reply_text("Ошибка при возврате в меню. Попробуй /start.")
+        print(f"Ошибка в send_main_menu: {e}")
 
 # Функция для начала тренировки
-def start_training(message, use_errors=False):
-    user_id = message.chat.id
-    if use_errors and not user_data[user_id]['errors']:
-        bot.send_message(user_id, "У тебя пока нет ошибок для тренировки.", reply_markup=main_menu_keyboard)
-        return
-    user_data[user_id]['training_mode'] = 'errors' if use_errors else 'all'
-    send_question(message)
+async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, use_errors=False) -> None:
+    try:
+        user_id = update.effective_chat.id
+        if use_errors and not user_data[user_id]['errors']:
+            await update.message.reply_text("У тебя пока нет ошибок для тренировки.", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            return
+        user_data[user_id]['training_mode'] = 'errors' if use_errors else 'all'
+        await send_question(update, context)
+    except Exception as e:
+        await update.message.reply_text("Ошибка при запуске тренировки. Вернись в меню с /start.")
+        print(f"Ошибка в start_training: {e}")
 
 # Функция для отправки вопроса
-def send_question(message):
-    user_id = message.chat.id
-    if user_data[user_id]['training_mode'] == 'errors':
-        current_words = {word: words[word] for word in user_data[user_id]['errors']}
-    else:
-        current_words = words
+async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        user_id = update.effective_chat.id
+        if user_data[user_id]['training_mode'] == 'errors':
+            current_words = {word: words[word] for word in user_data[user_id]['errors']}
+        else:
+            current_words = words
 
-    if not current_words:
-        bot.send_message(user_id, "Список слов пуст. Пожалуйста, добавь слова в массив words.", reply_markup=main_menu_keyboard)
-        user_data[user_id]['training_mode'] = None
-        return
+        if not current_words or 'words' not in globals():
+            await update.message.reply_text("Список слов пуст или не определён. Проверь массив words и попробуй снова с /start.", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            user_data[user_id]['training_mode'] = None
+            return
 
-    word, options = random.choice(list(current_words.items()))
-    correct_option = options[0]  # Правильный ответ всегда первый
-    random.shuffle(options)  # Перемешиваем варианты
+        word, options = random.choice(list(current_words.items()))
+        correct_option = options[0]  # Правильный ответ всегда первый
+        random.shuffle(options)  # Перемешиваем варианты
 
-    # Сохраняем правильный ответ и слово для проверки
-    user_data[user_id]['current_word'] = word
-    user_data[user_id]['correct_option'] = correct_option
+        # Сохраняем правильный ответ и слово для проверки
+        user_data[user_id]['current_word'] = word
+        user_data[user_id]['correct_option'] = correct_option
 
-    markup = telebot.types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-    for option in options:
-        markup.add(option)  # Кнопки остаются стандартными
-    markup.add("Главное меню")  # Кнопка для возврата в главное меню
-    bot.send_message(
-        user_id,
-        f"Выбери правильное ударение: {word}",
-        reply_markup=markup
-    )
+        markup = {"keyboard": [[{"text": option}] for option in options] + [{"text": "Главное меню"}], "resize_keyboard": True, "one_time_keyboard": True}
+        await update.message.reply_text(
+            f"Выбери правильное ударение: {word}",
+            reply_markup=markup
+        )
+    except Exception as e:
+        await update.message.reply_text("Ошибка при отправке вопроса. Вернись в меню с /start.")
+        print(f"Ошибка в send_question: {e}")
 
 # Функция для проверки ответа
-def check_answer(message):
-    user_id = message.chat.id
-    if message.text == "Главное меню":
-        send_main_menu(message)
-        return
+async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        user_id = update.effective_chat.id
+        if update.message.text == "Главное меню":
+            await send_main_menu(update, context)
+            return
 
-    correct_option = user_data[user_id]['correct_option']
-    word = user_data[user_id]['current_word']
-    training_mode = user_data[user_id]['training_mode']
+        if user_id not in user_data or 'correct_option' not in user_data[user_id]:
+            await update.message.reply_text("Данные потеряны. Начни заново с /start.")
+            return
 
-    if message.text == correct_option:
-        bot.send_message(user_id, f"✅ Правильно! {correct_option}")
-        # Удаляем слово из ошибок только в режиме тренировки ошибок
-        if training_mode == 'errors' and word in user_data[user_id]['errors']:
-            user_data[user_id]['errors'].remove(word)
-            if not user_data[user_id]['errors']:  # Если ошибок больше нет
-                bot.send_message(user_id, "🎉 Все ошибки исправлены!", reply_markup=main_menu_keyboard)
-                user_data[user_id]['training_mode'] = None
-                return
-    else:
-        bot.send_message(user_id, f"❌ Неправильно. Правильный ответ: {correct_option}")
-        # Добавляем слово в список ошибок только в режиме обычной тренировки
-        if training_mode == 'all' and word not in user_data[user_id]['errors']:
-            user_data[user_id]['errors'].append(word)
+        correct_option = user_data[user_id]['correct_option']
+        word = user_data[user_id]['current_word']
+        training_mode = user_data[user_id]['training_mode']
 
-    # Отправляем следующий вопрос
-    send_question(message)
+        if update.message.text == correct_option:
+            await update.message.reply_text(f"✅ Правильно! {correct_option}")
+            if training_mode == 'errors' and word in user_data[user_id]['errors']:
+                user_data[user_id]['errors'].remove(word)
+                if not user_data[user_id]['errors']:
+                    await update.message.reply_text("🎉 Все ошибки исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+                    user_data[user_id]['training_mode'] = None
+                    return
+        else:
+            await update.message.reply_text(f"❌ Неправильно. Правильный ответ: {correct_option}")
+            if training_mode == 'all' and word not in user_data[user_id]['errors']:
+                user_data[user_id]['errors'].append(word)
+
+        await send_question(update, context)
+    except Exception as e:
+        await update.message.reply_text("Ошибка при проверке ответа. Вернись в меню с /start.")
+        print(f"Ошибка в check_answer: {e}")
 
 # Функция для показа меню ошибок
-def show_errors_menu(message):
-    user_id = message.chat.id
-    errors = user_data[user_id]['errors']
-    if not errors:
-        bot.send_message(user_id, "У тебя пока нет ошибок.", reply_markup=main_menu_keyboard)
-    else:
-        errors_list = "\n".join(errors)
-        bot.send_message(
-            user_id,
-            f"Твои ошибки:\n{errors_list}\n\nВыбери действие:",
-            reply_markup=errors_menu_keyboard
-        )
+async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        user_id = update.effective_chat.id
+        errors = user_data[user_id]['errors']
+        if not errors:
+            await update.message.reply_text("У тебя пока нет ошибок.", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+        else:
+            errors_list = "\n".join(errors)
+            await update.message.reply_text(
+                f"Твои ошибки:\n{errors_list}\n\nВыбери действие:",
+                reply_markup={"keyboard": errors_menu_keyboard, "resize_keyboard": True}
+            )
+    except Exception as e:
+        await update.message.reply_text("Ошибка при показе ошибок. Вернись в меню с /start.")
+        print(f"Ошибка в show_errors_menu: {e}")
+
+# Регистрация обработчиков
+application.add_handler(CommandHandler("start", send_welcome))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 # Запуск бота
-bot.polling()
+def main():
+    try:
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    except Exception as e:
+        print(f"Ошибка в polling: {e}")
+        if user_data:
+            application.bot.send_message(chat_id=list(user_data.keys())[0], text="Бот остановился из-за ошибки. Перезапусти с /start.")
+
+if __name__ == "__main__":
+    main()
