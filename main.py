@@ -2,6 +2,12 @@ import os
 import random
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from datetime import datetime, date
+
+# Загрузка токена из переменной окружения
+TOKEN = os.environ.get("TOKEN")
+if not TOKEN:
+    raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
 # Загрузка токена из переменной окружения
 TOKEN = os.environ.get("TOKEN")
@@ -575,7 +581,6 @@ morphology_words = {
     "узы (р.п.)": "уз"
 }
 
-
 # Хранилище данных пользователей
 user_data = {}
 
@@ -600,19 +605,48 @@ pre_pri_keyboard = [
 # Инициализация приложения
 application = Application.builder().token(TOKEN).build()
 
+# Функция для обновления статистики дня
+def update_daily_stats(user_id):
+    today = date.today()
+    if user_id not in user_data or 'stats' not in user_data[user_id] or user_data[user_id]['stats'].get('date') != today:
+        user_data[user_id]['stats'] = {
+            'date': today,
+            'correct': 0,
+            'wrong': 0,
+            'fixed': 0
+        }
+
+# Функция для получения строки статистики
+def get_stats_message(user_id):
+    update_daily_stats(user_id)
+    stats = user_data[user_id]['stats']
+    return (f"📊 Статистика за сегодня ({stats['date']}):\n"
+            f"Правильных ответов: {stats['correct']}\n"
+            f"Ошибок: {stats['wrong']}\n"
+            f"Исправлено ошибок: {stats['fixed']}")
+
 # Приветственное сообщение и главное меню
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
+    update_daily_stats(user_id)
     await update.message.reply_text(
-        "Что будем тренировать?",
+        f"Что будем тренировать?\n\n{get_stats_message(user_id)}",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
-    user_data[user_id] = {'errors': {'accents': [], 'pre_pri': [], 'morphology': []}, 'training_mode': None, 'current_word': None, 'correct_option': None}
+    user_data[user_id] = {
+        'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
+        'training_mode': None,
+        'current_word': None,
+        'correct_option': None,
+        'stats': user_data[user_id]['stats']
+    }
 
 # Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
+
+    update_daily_stats(user_id)  # Проверяем и сбрасываем статистику при необходимости
 
     if text == "Ударения":
         await start_training(update, context, mode="accents", use_errors=False)
@@ -628,15 +662,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await check_answer(update, context)
     else:
         await update.message.reply_text(
-            "Пожалуйста, используй кнопки для навигации.",
+            f"Пожалуйста, используй кнопки для навигации.\n\n{get_stats_message(user_id)}",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
 
 # Функция для отправки главного меню
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
+    update_daily_stats(user_id)
     await update.message.reply_text(
-        "Что будем тренировать?",
+        f"Что будем тренировать?\n\n{get_stats_message(user_id)}",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
     user_data[user_id]['training_mode'] = None
@@ -645,7 +680,14 @@ async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str, use_errors: bool = False) -> None:
     user_id = update.effective_chat.id
     if user_id not in user_data:
-        user_data[user_id] = {'errors': {'accents': [], 'pre_pri': [], 'morphology': []}, 'training_mode': None, 'current_word': None, 'correct_option': None}
+        update_daily_stats(user_id)
+        user_data[user_id] = {
+            'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
+            'training_mode': None,
+            'current_word': None,
+            'correct_option': None,
+            'stats': user_data[user_id]['stats']
+        }
 
     user_data[user_id]['training_mode'] = f"{mode}_errors" if use_errors else mode
     await send_question(update, context)
@@ -661,7 +703,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         current_words = {word: words[word] for word in user_data[user_id]['errors']['accents'] if word in words}
         if not current_words:
             await update.message.reply_text(
-                "Все ошибки в ударениях исправлены или их нет!",
+                f"Все ошибки в ударениях исправлены или их нет!\n\n{get_stats_message(user_id)}",
                 reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
             )
             user_data[user_id]['training_mode'] = None
@@ -671,8 +713,8 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     elif mode == "pre_pri_errors":
         current_words = {word: pre_pri_words[word] for word in user_data[user_id]['errors']['pre_pri'] if word in pre_pri_words}
         if not current_words:
-            update.message.reply_text(
-                "Все ошибки в ПРЕ - ПРИ исправлены или их нет!",
+            await update.message.reply_text(
+                f"Все ошибки в ПРЕ - ПРИ исправлены или их нет!\n\n{get_stats_message(user_id)}",
                 reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
             )
             user_data[user_id]['training_mode'] = None
@@ -683,7 +725,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         current_words = {word: morphology_words[word] for word in user_data[user_id]['errors']['morphology'] if word in morphology_words}
         if not current_words:
             await update.message.reply_text(
-                "Все ошибки в морфологических нормах исправлены или их нет!",
+                f"Все ошибки в морфологических нормах исправлены или их нет!\n\n{get_stats_message(user_id)}",
                 reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
             )
             user_data[user_id]['training_mode'] = None
@@ -693,16 +735,15 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     if mode in ("accents", "accents_errors"):
         word, options = random.choice(list(current_words.items()))
-        correct_option = options[0]  # Правильный вариант из словаря
-        options_list = options.copy()  # Копируем список, чтобы не менять оригинал
-        random.shuffle(options_list)   # Перемешиваем копию
+        correct_option = options[0]
+        options_list = options.copy()
+        random.shuffle(options_list)
         keyboard = [[{"text": option}] for option in options_list]
         keyboard.append([{"text": "Главное меню"}])
         await update.message.reply_text(
             f"Выбери правильное ударение: {word}",
             reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
         )
-        print(f"Вопрос: слово={word}, правильный ответ={correct_option}, варианты={options_list}")  # Отладка
     elif mode in ("pre_pri", "pre_pri_errors"):
         word, correct_answer = random.choice(list(current_words.items()))
         keyboard = pre_pri_keyboard
@@ -732,46 +773,60 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await send_main_menu(update, context)
         return
 
+    update_daily_stats(user_id)  # Обновляем статистику перед проверкой
+
     correct_option = user_data[user_id]['correct_option']
     word = user_data[user_id]['current_word']
     mode = user_data[user_id]['training_mode']
+    stats = user_data[user_id]['stats']
 
     if mode in ("accents", "accents_errors"):
-        print(f"Проверка: слово={word}, введено={text}, правильный ответ={correct_option}")  # Отладка
         if text == correct_option:
-            await update.message.reply_text(f"✅ Правильно! {correct_option}")
+            stats['correct'] += 1
+            message = f"✅ Правильно! {correct_option}"
             if mode == "accents_errors" and word in user_data[user_id]['errors']['accents']:
                 user_data[user_id]['errors']['accents'].remove(word)
+                stats['fixed'] += 1
         else:
-            await update.message.reply_text(f"❌ Неправильно. Правильный ответ: {correct_option}")
+            stats['wrong'] += 1
+            message = f"❌ Неправильно. Правильный ответ: {correct_option}"
             if mode == "accents" and word not in user_data[user_id]['errors']['accents']:
                 user_data[user_id]['errors']['accents'].append(word)
     elif mode in ("pre_pri", "pre_pri_errors"):
         correct_answer = pre_pri_words[word]
         if text == ("Е" if "Е" in correct_answer else "И"):
-            await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
+            stats['correct'] += 1
+            message = f"✅ Правильно! Верное написание: {correct_answer}"
             if mode == "pre_pri_errors" and word in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].remove(word)
+                stats['fixed'] += 1
         else:
-            await update.message.reply_text(f"❌ Неправильно. Верное написание: {correct_answer}")
+            stats['wrong'] += 1
+            message = f"❌ Неправильно. Верное написание: {correct_answer}"
             if mode == "pre_pri" and word not in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].append(word)
     elif mode in ("morphology", "morphology_errors"):
         if text.lower() == correct_option.lower():
-            await update.message.reply_text(f"✅ Верно! Правильное написание: {correct_option}")
+            stats['correct'] += 1
+            message = f"✅ Верно! Правильное написание: {correct_option}"
             if mode == "morphology_errors" and word in user_data[user_id]['errors']['morphology']:
                 user_data[user_id]['errors']['morphology'].remove(word)
+                stats['fixed'] += 1
         else:
-            await update.message.reply_text(f"❌ Ошибка. Правильное написание: {correct_option}")
+            stats['wrong'] += 1
+            message = f"❌ Ошибка. Правильное написание: {correct_option}"
             if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
                 user_data[user_id]['errors']['morphology'].append(word)
+
+    # Добавляем статистику в сообщение
+    await update.message.reply_text(f"{message}\n\n{get_stats_message(user_id)}")
 
     # Проверка завершения режима ошибок и переход к следующему вопросу
     if mode.endswith("_errors"):
         error_list = user_data[user_id]['errors'][mode.split('_')[0]]
         if not error_list:
             await update.message.reply_text(
-                f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!",
+                f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!\n\n{get_stats_message(user_id)}",
                 reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
             )
             user_data[user_id]['training_mode'] = None
@@ -781,14 +836,14 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     else:
         await send_question(update, context)
 
-
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
+    update_daily_stats(user_id)
     errors = user_data[user_id]['errors']
     if not any(errors.values()):
         await update.message.reply_text(
-            "У тебя нет ошибок, умничка!",
+            f"У тебя нет ошибок, умничка!\n\n{get_stats_message(user_id)}",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
     else:
@@ -796,7 +851,7 @@ async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         pre_pri_list = "\n".join(errors['pre_pri']) if errors['pre_pri'] else "Нет ошибок"
         morphology_list = "\n".join(errors['morphology']) if errors['morphology'] else "Нет ошибок"
         await update.message.reply_text(
-            f"Твои ошибки:\nУдарения:\n{accents_list}\n\nПРЕ - ПРИ:\n{pre_pri_list}\n\nМорфологические нормы:\n{morphology_list}\n\nЧто исправлять?",
+            f"Твои ошибки:\nУдарения:\n{accents_list}\n\nПРЕ - ПРИ:\n{pre_pri_list}\n\nМорфологические нормы:\n{morphology_list}\n\nЧто исправлять?\n\n{get_stats_message(user_id)}",
             reply_markup={"keyboard": errors_menu_keyboard, "resize_keyboard": True}
         )
         user_data[user_id]['training_mode'] = "errors"
@@ -806,11 +861,13 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = update.effective_chat.id
     text = update.message.text.strip()
 
+    update_daily_stats(user_id)
+
     if user_data[user_id]['training_mode'] == "errors":
         if text == "Ударения":
             if not user_data[user_id]['errors']['accents']:
                 await update.message.reply_text(
-                    "У тебя нет ошибок в ударениях!",
+                    f"У тебя нет ошибок в ударениях!\n\n{get_stats_message(user_id)}",
                     reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
                 )
             else:
@@ -818,7 +875,7 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
         elif text == "ПРЕ - ПРИ":
             if not user_data[user_id]['errors']['pre_pri']:
                 await update.message.reply_text(
-                    "У тебя нет ошибок в ПРЕ - ПРИ!",
+                    f"У тебя нет ошибок в ПРЕ - ПРИ!\n\n{get_stats_message(user_id)}",
                     reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
                 )
             else:
@@ -826,14 +883,13 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
         elif text == "Морфологические нормы":
             if not user_data[user_id]['errors']['morphology']:
                 await update.message.reply_text(
-                    "У тебя нет ошибок в морфологических нормах!",
+                    f"У тебя нет ошибок в морфологических нормах!\n\n{get_stats_message(user_id)}",
                     reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
                 )
             else:
                 await start_training(update, context, mode="morphology", use_errors=True)
         elif text == "Главное меню":
             await send_main_menu(update, context)
-
 
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
