@@ -309,26 +309,6 @@ pre_pri_words = {
     "пр..налечь": "прИналечь"
 }
 
-# Хранилище данных пользователей
-user_data = {}
-
-# Клавиатура для главного меню
-main_menu_keyboard = [
-    [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Ошибки"}]
-]
-
-# Клавиатура для меню ошибок
-errors_menu_keyboard = [
-    [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Главное меню"}]
-]
-
-# Клавиатура для ПРЕ - ПРИ
-pre_pri_keyboard = [
-    [{"text": "Е"}, {"text": "И"}],
-    [{"text": "Главное меню"}]
-]
-
-
 # Инициализация приложения
 application = Application.builder().token(TOKEN).build()
 
@@ -386,7 +366,10 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     mode = user_data[user_id]['training_mode']
 
     if mode == "accents":
-        word, options = random.choice(list(words.items()))
+        current_words = words
+        if user_data[user_id]['errors']['accents']:
+            current_words = {word: words[word] for word in user_data[user_id]['errors']['accents'] if word in words}
+        word, options = random.choice(list(current_words.items()))
         correct_option = options[0]
         random.shuffle(options)
         keyboard = [[{"text": option}] for option in options]
@@ -396,7 +379,17 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
         )
     elif mode == "pre_pri":
-        word, correct_answer = random.choice(list(pre_pri_words.items()))
+        current_words = pre_pri_words
+        if user_data[user_id]['errors']['pre_pri']:  # Если есть ошибки, используем только их
+            current_words = {word: pre_pri_words[word] for word in user_data[user_id]['errors']['pre_pri'] if word in pre_pri_words}
+        if not current_words:  # Если ошибок нет или они исчерпаны
+            await update.message.reply_text(
+                "Все ошибки исправлены или их нет!",
+                reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
+            )
+            user_data[user_id]['training_mode'] = None
+            return
+        word, correct_answer = random.choice(list(current_words.items()))
         keyboard = pre_pri_keyboard
         await update.message.reply_text(
             f"Выбери правильную букву: {word}",
@@ -425,6 +418,8 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if mode == "accents":
         if text == correct_option:
             await update.message.reply_text(f"✅ Правильно! {correct_option}")
+            if word in user_data[user_id]['errors']['accents']:
+                user_data[user_id]['errors']['accents'].remove(word)
         else:
             await update.message.reply_text(f"❌ Неправильно. Правильный ответ: {correct_option}")
             if word not in user_data[user_id]['errors']['accents']:
@@ -433,10 +428,27 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         correct_answer = pre_pri_words[word]
         if text == correct_option:
             await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
+            if word in user_data[user_id]['errors']['pre_pri']:
+                user_data[user_id]['errors']['pre_pri'].remove(word)
         else:
             await update.message.reply_text(f"❌ Неправильно. Верное написание: {correct_answer}")
             if word not in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].append(word)
+
+    if not user_data[user_id]['errors']['pre_pri'] and mode == "pre_pri":
+        await update.message.reply_text(
+            "🎉 Все ошибки в ПРЕ - ПРИ исправлены!",
+            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
+        )
+        user_data[user_id]['training_mode'] = None
+        return
+    elif not user_data[user_id]['errors']['accents'] and mode == "accents":
+        await update.message.reply_text(
+            "🎉 Все ошибки в ударениях исправлены!",
+            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
+        )
+        user_data[user_id]['training_mode'] = None
+        return
 
     await send_question(update, context)
 
