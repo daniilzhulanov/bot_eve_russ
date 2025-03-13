@@ -735,7 +735,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     mode = user_data[user_id]['training_mode']
 
     if mode in ("accents", "accents_errors"):
-        print(f"Проверка: слово={word}, введено={text}, правильный ответ={correct_option}")  # Отладка
+        print(f"Проверка: слово={word}, введено={text}, правильный ответ={correct_option}")
         if text == correct_option:
             await update.message.reply_text(f"✅ Правильно! {correct_option}")
             if mode == "accents_errors" and word in user_data[user_id]['errors']['accents']:
@@ -746,7 +746,9 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 user_data[user_id]['errors']['accents'].append(word)
     elif mode in ("pre_pri", "pre_pri_errors"):
         correct_answer = pre_pri_words[word]
-        if text == ("Е" if "Е" in correct_answer else "И"):
+        user_answer = "Е" if text == "Е" else "И"  # Убедимся, что ответ интерпретируется корректно
+        correct_letter = "Е" if "Е" in correct_answer else "И"
+        if user_answer == correct_letter:
             await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
             if mode == "pre_pri_errors" and word in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].remove(word)
@@ -773,11 +775,10 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
             )
             user_data[user_id]['training_mode'] = None
-            return
         else:
-            await send_question(update, context)
+            await send_question(update, context)  # Всегда вызываем следующее слово, если ошибки есть
     else:
-        await send_question(update, context)
+        await send_question(update, context)  # В обычном режиме тоже вызываем следующее слово
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
