@@ -759,7 +759,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         else:
             await update.message.reply_text(f"❌ Ошибка. Правильное написание: {correct_option}")
             if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
-                user_data[user_id]['errors']['morphology'].append(word)
+                user_data[user_id]['errors']['morphology'].append(word))
 
     # Проверка завершения режима ошибок
     if mode.endswith("_errors") and not user_data[user_id]['errors'][mode.split('_')[0]]:
