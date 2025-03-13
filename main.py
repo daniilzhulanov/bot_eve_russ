@@ -774,10 +774,8 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             user_data[user_id]['training_mode'] = None
             return
         else:
-            # Если остались ошибки, отправляем следующий вопрос
             await send_question(update, context)
     else:
-        # Для обычного режима просто отправляем следующий вопрос
         await send_question(update, context)
 
 # Функция для показа меню ошибок
