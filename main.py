@@ -580,38 +580,31 @@ morphology_words = {
     "сардины (р.п.)": "сардин",
     "узы (р.п.)": "уз"
 }
-# Хранилище данных пользователей
 user_data = {}
 
-# Клавиатура для главного меню
 main_menu_keyboard = [
     [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Морфологические нормы"}],
     [{"text": "Ошибки"}],
-    [{"text": "Статистика"}]  # Добавлена кнопка "Статистика"
+    [{"text": "Статистика"}]
 ]
 
-# Клавиатура для меню ошибок
 errors_menu_keyboard = [
     [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Морфологические нормы"}],
     [{"text": "Главное меню"}],
-    [{"text": "Статистика"}]  # Добавлена кнопка "Статистика"
+    [{"text": "Статистика"}]
 ]
 
-# Клавиатура для ПРЕ - ПРИ
 pre_pri_keyboard = [
     [{"text": "Е"}, {"text": "И"}],
     [{"text": "Главное меню"}]
 ]
 
-# Клавиатура для статистики
 stats_keyboard = [
     [{"text": "Главное меню"}]
 ]
 
-# Инициализация приложения
 application = Application.builder().token(TOKEN).build()
 
-# Функция для обновления статистики дня
 def update_daily_stats(user_id):
     today = date.today()
     if user_id not in user_data or 'stats' not in user_data[user_id] or user_data[user_id]['stats'].get('date') != today:
@@ -622,7 +615,6 @@ def update_daily_stats(user_id):
             'fixed': 0
         }
 
-# Функция для получения строки статистики
 def get_stats_message(user_id):
     update_daily_stats(user_id)
     stats = user_data[user_id]['stats']
@@ -631,23 +623,25 @@ def get_stats_message(user_id):
             f"Ошибок: {stats['wrong']}\n"
             f"Исправлено ошибок: {stats['fixed']}")
 
-# Приветственное сообщение и главное меню
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
+    print(f"Получена команда /start от {user_id}")
+    
+    if user_id not in user_data:
+        user_data[user_id] = {
+            'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
+            'training_mode': None,
+            'current_word': None,
+            'correct_option': None,
+            'stats': {}
+        }
+    
     update_daily_stats(user_id)
     await update.message.reply_text(
         "Что будем тренировать?",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
-    user_data[user_id] = {
-        'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
-        'training_mode': None,
-        'current_word': None,
-        'correct_option': None,
-        'stats': user_data[user_id]['stats']
-    }
 
-# Функция для отображения статистики
 async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     update_daily_stats(user_id)
@@ -655,14 +649,14 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         get_stats_message(user_id),
         reply_markup={"keyboard": stats_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
-    user_data[user_id]['training_mode'] = None  # Сбрасываем режим, чтобы не мешать другим действиям
+    user_data[user_id]['training_mode'] = None
 
-# Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
+    print(f"Получено сообщение: {text} от {user_id}")
 
-    update_daily_stats(user_id)  # Проверяем и сбрасываем статистику при необходимости
+    update_daily_stats(user_id)
 
     if text == "Ударения":
         await start_training(update, context, mode="accents", use_errors=False)
@@ -684,7 +678,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
 
-# Функция для отправки главного меню
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     update_daily_stats(user_id)
@@ -694,23 +687,21 @@ async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
     user_data[user_id]['training_mode'] = None
 
-# Функция для начала тренировки
 async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str, use_errors: bool = False) -> None:
     user_id = update.effective_chat.id
     if user_id not in user_data:
-        update_daily_stats(user_id)
         user_data[user_id] = {
             'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
             'training_mode': None,
             'current_word': None,
             'correct_option': None,
-            'stats': user_data[user_id]['stats']
+            'stats': {}
         }
-
+    
+    update_daily_stats(user_id)
     user_data[user_id]['training_mode'] = f"{mode}_errors" if use_errors else mode
     await send_question(update, context)
 
-# Функция для отправки вопроса
 async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     mode = user_data[user_id]['training_mode']
@@ -782,7 +773,6 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_data[user_id]['current_word'] = word
     user_data[user_id]['correct_option'] = correct_option
 
-# Функция для проверки ответа
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
@@ -852,7 +842,6 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     else:
         await send_question(update, context)
 
-# Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     update_daily_stats(user_id)
@@ -872,7 +861,6 @@ async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         user_data[user_id]['training_mode'] = "errors"
 
-# Обработчик выбора в меню ошибок
 async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
@@ -909,14 +897,15 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
         elif text == "Главное меню":
             await send_main_menu(update, context)
 
-# Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda update, context: handle_errors_choice(update, context) if user_data.get(update.effective_chat.id, {}).get('training_mode') == "errors" else handle_message(update, context)))
 
-# Запуск бота
 def main():
-    print("Starting bot polling...")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    print("Запуск бота...")
+    try:
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    except Exception as e:
+        print(f"Ошибка при запуске бота: {e}")
 
 if __name__ == "__main__":
     main()
