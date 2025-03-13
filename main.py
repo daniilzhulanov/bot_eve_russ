@@ -8,7 +8,6 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
-
 # Словарь слов с вариантами ударений
 words = {
     "аэропорты": ["аэропОрты", "аэропортЫ"],
@@ -232,7 +231,6 @@ words = {
     "ненадолго": ["ненадОлго", "ненАдолго"]
 }
 
-
 # Хранилище данных пользователей
 user_data = {}
 
@@ -340,6 +338,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         user_data[user_id]['training_mode'] = None
         return
 
+    
     word, options = random.choice(list(current_words.items()))
     correct_option = options[0]  # Правильный ответ — первый
     random.shuffle(options)
