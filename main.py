@@ -671,7 +671,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     elif mode == "pre_pri_errors":
         current_words = {word: pre_pri_words[word] for word in user_data[user_id]['errors']['pre_pri'] if word in pre_pri_words}
         if not current_words:
-            await update.message.reply_text(
+            update.message.reply_text(
                 "Все ошибки в ПРЕ - ПРИ исправлены или их нет!",
                 reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
             )
@@ -693,14 +693,16 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     if mode in ("accents", "accents_errors"):
         word, options = random.choice(list(current_words.items()))
-        correct_option = options[0]
-        random.shuffle(options)
-        keyboard = [[{"text": option}] for option in options]
+        correct_option = options[0]  # Правильный вариант из словаря
+        options_list = options.copy()  # Копируем список, чтобы не менять оригинал
+        random.shuffle(options_list)   # Перемешиваем копию
+        keyboard = [[{"text": option}] for option in options_list]
         keyboard.append([{"text": "Главное меню"}])
         await update.message.reply_text(
             f"Выбери правильное ударение: {word}",
             reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
         )
+        print(f"Вопрос: слово={word}, правильный ответ={correct_option}, варианты={options_list}")  # Отладка
     elif mode in ("pre_pri", "pre_pri_errors"):
         word, correct_answer = random.choice(list(current_words.items()))
         keyboard = pre_pri_keyboard
