@@ -8,8 +8,7 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
-
-# Словарь для "Ударений" 
+# Словарь для "Ударений" (сокращен для примера)
 words = {
     "аэропорты": ["аэропОрты", "аэропортЫ"],
     "банты": ["бАнты", "бантЫ"],
@@ -240,7 +239,6 @@ words = {
     "ненадолго": ["ненадОлго", "ненАдолго"]
 }
 
-#словарь для Пре-При
 pre_pri_words = {
     "пр..следовать": "прЕследовать",
     "пр..нудить": "прИнудить",
@@ -311,7 +309,7 @@ pre_pri_words = {
 }
 
 
-# Новый словарь для "Морфологических норм" 
+# Полный словарь для "Морфологических норм"
 morphology_words = {
     "борт": "бортА",
     "вексель": "векселЯ",
@@ -504,13 +502,13 @@ morphology_words = {
     "судья (р.п.)": "сУдей",
     "блюдце (р.п.)": "блЮдец",
     "зеркальце (р.п.)": "зЕркалец",
-    "копытце (р.п.)": "копЫтец", 
+    "копытце (р.п.)": "копЫтец",
     "одеяльце (р.п.)": "одеЯлец",
     "полотенце (р.п.)": "полотЕнец",
     "сердце (р.п.)": "сердЕц",
     "болотце (р.п.)": "болОтцев",
-    "кружевце (р.п.)": "крУжевцев", 
-    "оконце (р.п.)": "окОнцев",  
+    "кружевце (р.п.)": "крУжевцев",
+    "оконце (р.п.)": "окОнцев",
     "вафля (р.п.)": "вАфель",
     "петля (р.п.)": "пЕтель",
     "потеря (р.п.)": "потЕрь",
@@ -533,7 +531,7 @@ morphology_words = {
     "сирота (р.п.)": "сирОт",
     "богиня (р.п.)": "богИнь",
     "погоня (р.п.)": "погОнь",
-    "тихоня (р.п.)": "тихОнь",  
+    "тихоня (р.п.)": "тихОнь",
     "яблоня (р.п.)": "Яблонь",
     "басня (р.п.)": "бАсен",
     "башня (р.п.)": "бАшен",
@@ -576,23 +574,22 @@ morphology_words = {
     "узы (р.п.)": "Уз"
 }
 
-
 # Хранилище данных пользователей
 user_data = {}
 
-# Клавиатура для главного меню (добавляем "Морфологические нормы")
+# Клавиатура для главного меню
 main_menu_keyboard = [
     [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Морфологические нормы"}],
     [{"text": "Ошибки"}]
 ]
 
-# Клавиатура для меню ошибок (добавляем "Морфологические нормы")
+# Клавиатура для меню ошибок
 errors_menu_keyboard = [
     [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Морфологические нормы"}],
     [{"text": "Главное меню"}]
 ]
 
-# Клавиатура для ПРЕ - ПРИ (оставляем как есть)
+# Клавиатура для ПРЕ - ПРИ
 pre_pri_keyboard = [
     [{"text": "Е"}, {"text": "И"}],
     [{"text": "Главное меню"}]
@@ -632,7 +629,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "Пожалуйста, используй кнопки для навигации.",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
-        
+
 # Функция для отправки главного меню
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -746,7 +743,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 user_data[user_id]['errors']['accents'].append(word)
     elif mode in ("pre_pri", "pre_pri_errors"):
         correct_answer = pre_pri_words[word]
-        if text == correct_option:
+        if text == ("Е" if "Е" in correct_answer else "И"):
             await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
             if mode == "pre_pri_errors" and word in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].remove(word)
@@ -755,34 +752,19 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             if mode == "pre_pri" and word not in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].append(word)
     elif mode in ("morphology", "morphology_errors"):
-        correct_answer = morphology_words[word]
-        if text == correct_answer:
-            await update.message.reply_text(f"✅ Верно! Правильное написание: {correct_answer}")
+        if text == correct_option:
+            await update.message.reply_text(f"✅ Верно! Правильное написание: {correct_option}")
             if mode == "morphology_errors" and word in user_data[user_id]['errors']['morphology']:
                 user_data[user_id]['errors']['morphology'].remove(word)
         else:
-            await update.message.reply_text(f"❌ Ошибка. Правильное написание: {correct_answer}")
+            await update.message.reply_text(f"❌ Ошибка. Правильное написание: {correct_option}")
             if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
                 user_data[user_id]['errors']['morphology'].append(word)
 
-    # Проверка на завершение режима ошибок
-    if mode == "accents_errors" and not user_data[user_id]['errors']['accents']:
+    # Проверка завершения режима ошибок
+    if mode.endswith("_errors") and not user_data[user_id]['errors'][mode.split('_')[0]]:
         await update.message.reply_text(
-            "🎉 Все ошибки в ударениях исправлены!",
-            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-        )
-        user_data[user_id]['training_mode'] = None
-        return
-    elif mode == "pre_pri_errors" and not user_data[user_id]['errors']['pre_pri']:
-        await update.message.reply_text(
-            "🎉 Все ошибки в ПРЕ - ПРИ исправлены!",
-            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-        )
-        user_data[user_id]['training_mode'] = None
-        return
-    elif mode == "morphology_errors" and not user_data[user_id]['errors']['morphology']:
-        await update.message.reply_text(
-            "🎉 Все ошибки в морфологических нормах исправлены!",
+            f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
         user_data[user_id]['training_mode'] = None
@@ -794,7 +776,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     errors = user_data[user_id]['errors']
-    if not errors['accents'] and not errors['pre_pri'] and not errors['morphology']:
+    if not any(errors.values()):
         await update.message.reply_text(
             "У тебя нет ошибок, умничка!",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
