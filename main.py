@@ -771,10 +771,12 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             if text == correct_letter:
                 await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
                 if mode == "pre_pri_errors" and word in user_data[user_id]['errors']['pre_pri']:
+                    print(f"Удаляю слово {word} из ошибок pre_pri")
                     user_data[user_id]['errors']['pre_pri'].remove(word)
             else:
                 await update.message.reply_text(f"❌ Неправильно. Верное написание: {correct_answer}")
                 if mode == "pre_pri" and word not in user_data[user_id]['errors']['pre_pri']:
+                    print(f"Добавляю слово {word} в ошибки pre_pri")
                     user_data[user_id]['errors']['pre_pri'].append(word)
         elif mode in ("morphology", "morphology_errors"):
             if text.lower() == correct_option.lower():
@@ -787,13 +789,14 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                     user_data[user_id]['errors']['morphology'].append(word)
 
         # Сбрасываем текущие данные
+        print("Сбрасываю данные перед переходом к следующему вопросу")
         user_data[user_id]['current_word'] = None
         user_data[user_id]['correct_option'] = None
-        print(f"Данные сброшены: current_word={user_data[user_id]['current_word']}")
 
-        # Переход к следующему вопросу или завершение режима ошибок
+        # Проверяем режим ошибок
         if mode.endswith("_errors"):
             error_list = user_data[user_id]['errors'][mode.split('_')[0]]
+            print(f"Проверка ошибок: {mode.split('_')[0]}, осталось ошибок: {len(error_list)}")
             if not error_list:
                 await update.message.reply_text(
                     f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!",
