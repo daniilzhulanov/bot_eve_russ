@@ -721,6 +721,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_data[user_id]['current_word'] = word
     user_data[user_id]['correct_option'] = correct_option
 
+
 # Функция для проверки ответа
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -778,6 +779,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     else:
         await send_question(update, context)
 
+
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -829,6 +831,7 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
                 await start_training(update, context, mode="morphology", use_errors=True)
         elif text == "Главное меню":
             await send_main_menu(update, context)
+
 
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
