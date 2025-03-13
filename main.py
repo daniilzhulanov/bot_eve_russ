@@ -610,6 +610,7 @@ def update_daily_stats(user_id):
             'fixed': 0
         }
 
+
 def get_stats_message(user_id):
     update_daily_stats(user_id)
     stats = user_data[user_id]['stats']
@@ -617,6 +618,7 @@ def get_stats_message(user_id):
             f"Правильных ответов: {stats['correct']}\n"
             f"Ошибок: {stats['wrong']}\n"
             f"Исправлено ошибок: {stats['fixed']}")
+
 
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -637,6 +639,7 @@ async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
 
+
 async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     update_daily_stats(user_id)
@@ -645,6 +648,7 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         reply_markup={"keyboard": stats_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
     user_data[user_id]['training_mode'] = None
+
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -672,6 +676,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "Пожалуйста, используй кнопки для навигации.",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
+
 
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
