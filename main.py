@@ -834,9 +834,8 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
             )
             user_data[user_id]['training_mode'] = None
-            return
         else:
-            await send_question(update, context)
+            await send_question(update, context)  # Всегда переходим к следующему вопросу, если есть ошибки
     else:
         await send_question(update, context)
 
