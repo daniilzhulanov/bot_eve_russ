@@ -869,14 +869,17 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
         elif text == "Главное меню":
             await send_main_menu(update, context)
 
+
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda update, context: handle_errors_choice(update, context) if user_data.get(update.effective_chat.id, {}).get('training_mode') == "errors" else handle_message(update, context)))
+
 
 # Запуск бота
 def main():
     print("Starting bot polling...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
+
 
 if __name__ == "__main__":
     main()
