@@ -767,6 +767,10 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
                 user_data[user_id]['errors']['morphology'].append(word)
 
+    # Сбрасываем текущие данные перед следующим вопросом
+    user_data[user_id]['current_word'] = None
+    user_data[user_id]['correct_option'] = None
+
     # Логика завершения режима ошибок и перехода к следующему вопросу
     if mode.endswith("_errors"):
         error_list = user_data[user_id]['errors'][mode.split('_')[0]]
