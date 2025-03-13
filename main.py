@@ -8,8 +8,7 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
-
-# Словарь слов с вариантами ударений (вставьте ваш массив words сюда)
+# Словарь слов с вариантами ударений
 words = {
     "аэропорты": ["аэропОрты", "аэропортЫ"],
     "банты": ["бАнты", "бантЫ"],
@@ -240,93 +239,17 @@ words = {
     "ненадолго": ["ненадОлго", "ненАдолго"]
 }
 
-pre_pri_words = {
-    "пр..следовать": "прЕследовать",
-    "пр..нудить": "прИнудить",
-    "пр..возносить": "прЕвозносить",
-    "пр..мерять": "прИмерять",
-    "пр..вратное (мнение)": "прЕвратное (мнение)",
-    "пр..зирать": "прЕзирать",
-    "пр..хоть": "прИхоть",
-    "пр..вилегия": "прИвилегия",
-    "пр..исполненный": "прЕисполненный",
-    "пр..небрегать": "прЕнебрегать",
-    "пр..обладать": "прЕобладать",
-    "пр..цениться": "прИцениться",
-    "пр..страстие": "прИстрастие",
-    "пр..видение": "прИвидение",
-    "пр..чуда": "прИчуда",
-    "пр..сяга": "прИсяга",
-    "пр..пятствие": "прЕпятствие",
-    "пр..словутый": "прЕсловутый",
-    "пр..способиться": "прИспособиться",
-    "пр..тензия": "прЕтензия",
-    "пр..говор": "прИговор",
-    "пр..баутка": "прИбаутка",
-    "пр..вередливый": "прИвередливый",
-    "пр..внести": "прИвнести",
-    "пр..волье": "прИволье",
-    "пр..увеличить": "прЕувеличить",
-    "беспр..кословно": "беспрЕкословно",
-    "пр..годиться": "прИгодиться",
-    "пр..льстить(ся)": "прЕльстить(ся)",
-    "пр..гожий": "прИгожий",
-    "пр..зидент": "прЕзидент",
-    "пр..дираться": "прИдираться",
-    "пр..возмочь": "прЕвозмочь",
-    "пр..ключение": "прИключение",
-    "пр..рогатива": "прЕрогатива",
-    "пр..лежный": "прИлежный",
-    "беспр..страстный": "беспрИстрастный",
-    "пр..менять": "прИменять",
-    "пр..оритет": "прИоритет",
-    "пр..скорбный": "прИскорбный",
-    "непр..менно": "непрЕменно",
-    "пр..сниться": "прИсниться",
-    "пр..поднести": "прЕподнести",
-    "пр..страстный": "прИстрастный",
-    "пр..успеть": "прЕуспеть",
-    "пр..тязание": "прИтязание",
-    "пр..чудливый": "прИчудливый",
-    "пр..хотливый": "прИхотливый",
-    "пр..знать(ся)": "прИзнать(ся)",
-    "пр..целиться": "прИцелиться",
-    "пр..сечь": "прЕсечь",
-    "пр..людия": "прЕлюдия",
-    "пр..слушиваться": "прИслушиваться",
-    "пр..смотреться": "прИсмотреться",
-    "пр..выкнуть": "прИвыкнуть",
-    "пр..норовиться": "прИноровиться",
-    "непр..миримый": "непрИмиримый",
-    "пр..мета": "прИмета",
-    "пр..готовить": "прИготовить",
-    "пр..рост": "прИрост",
-    "пр..умножить": "прИумножить",
-    "непр..глядный": "непрИглядный",
-    "пр..митивный": "прИмитивный",
-    "пр..грешение": "прЕгрешение",
-    "пр..вентивный": "прЕвентивный",
-    "пр..налечь": "прИналечь"
-}
-
 # Хранилище данных пользователей
 user_data = {}
 
-
 # Клавиатура для главного меню
 main_menu_keyboard = [
-    [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Ошибки"}]
+    [{"text": "Тренировать"}, {"text": "Ошибки"}]  # Уже корректно: список списков
 ]
 
 # Клавиатура для меню ошибок
 errors_menu_keyboard = [
-    [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Главное меню"}]
-]
-
-# Клавиатура для ПРЕ - ПРИ
-pre_pri_keyboard = [
-    [{"text": "Е"}, {"text": "И"}],
-    [{"text": "Главное меню"}]
+    [{"text": "Главное меню"}, {"text": "Тренировать ошибки"}]  # Уже корректно
 ]
 
 # Инициализация приложения
@@ -335,28 +258,37 @@ application = Application.builder().token(TOKEN).build()
 # Приветственное сообщение и главное меню
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
+    print(f"send_welcome: User {user_id} started bot")
     await update.message.reply_text(
-        "Что будем тренировать?",
+        "Привет! Я помогу тебе тренировать ударения. Выбери действие:",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
-    user_data[user_id] = {'errors': {'accents': [], 'pre_pri': []}, 'training_mode': None, 'current_word': None, 'correct_option': None}
+    user_data[user_id] = {'errors': [], 'training_mode': None, 'current_word': None, 'correct_option': None}
+    print(f"User {user_id} initialized with data: {user_data[user_id]}")
 
 # Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
+    print(f"handle_message: Received '{text}' from user {user_id}")
 
-    if text == "Ударения":
-        await start_training(update, context, mode="accents", use_errors=False)
-    elif text == "ПРЕ - ПРИ":
-        await start_training(update, context, mode="pre_pri", use_errors=False)
+    if text == "Тренировать":
+        print(f"Matched 'Тренировать' for user {user_id}")
+        await start_training(update, context, use_errors=False)
     elif text == "Ошибки":
+        print(f"Matched 'Ошибки' for user {user_id}")
         await show_errors_menu(update, context)
     elif text == "Главное меню":
+        print(f"Matched 'Главное меню' for user {user_id}")
         await send_main_menu(update, context)
+    elif text == "Тренировать ошибки":
+        print(f"Matched 'Тренировать ошибки' for user {user_id}")
+        await start_training(update, context, use_errors=True)
     elif user_id in user_data and user_data[user_id]['training_mode'] is not None:
+        print(f"Checking answer for user {user_id}")
         await check_answer(update, context)
     else:
+        print(f"No match for '{text}', showing main menu for user {user_id}")
         await update.message.reply_text(
             "Пожалуйста, используй кнопки для навигации.",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
@@ -365,169 +297,139 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # Функция для отправки главного меню
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
+    print(f"send_main_menu: Returning user {user_id} to main menu")
     await update.message.reply_text(
-        "Что будем тренировать?",
+        "Выбери действие:",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
     user_data[user_id]['training_mode'] = None
 
 # Функция для начала тренировки
-async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str, use_errors: bool = False) -> None:
+async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, use_errors=False) -> None:
     user_id = update.effective_chat.id
-    if user_id not in user_data:
-        user_data[user_id] = {'errors': {'accents': [], 'pre_pri': []}, 'training_mode': None, 'current_word': None, 'correct_option': None}
+    print(f"start_training: Starting for user {user_id}, use_errors={use_errors}")
 
-    user_data[user_id]['training_mode'] = f"{mode}_errors" if use_errors else mode
+    if user_id not in user_data:
+        print(f"User {user_id} not in user_data, initializing")
+        user_data[user_id] = {'errors': [], 'training_mode': None, 'current_word': None, 'correct_option': None}
+
+    if use_errors and not user_data[user_id]['errors']:
+        print(f"No errors found for user {user_id}")
+        await update.message.reply_text(
+            "У тебя пока нет ошибок для тренировки.",
+            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
+        )
+        return
+
+    user_data[user_id]['training_mode'] = 'errors' if use_errors else 'all'
+    print(f"Training mode set to '{user_data[user_id]['training_mode']}' for user {user_id}")
     await send_question(update, context)
 
 # Функция для отправки вопроса
 async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
-    mode = user_data[user_id]['training_mode']
+    print(f"send_question: Preparing question for user {user_id}, mode={user_data[user_id]['training_mode']}")
 
-    if mode == "accents":
-        current_words = words
-    elif mode == "accents_errors":
-        current_words = {word: words[word] for word in user_data[user_id]['errors']['accents'] if word in words}
-        if not current_words:
-            await update.message.reply_text(
-                "Все ошибки в ударениях исправлены или их нет!",
-                reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-            )
-            user_data[user_id]['training_mode'] = None
-            return
-    elif mode == "pre_pri":
-        current_words = pre_pri_words
-    elif mode == "pre_pri_errors":
-        current_words = {word: pre_pri_words[word] for word in user_data[user_id]['errors']['pre_pri'] if word in pre_pri_words}
-        if not current_words:
-            await update.message.reply_text(
-                "Все ошибки в ПРЕ - ПРИ исправлены или их нет!",
-                reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-            )
-            user_data[user_id]['training_mode'] = None
-            return
+    if user_data[user_id]['training_mode'] == 'errors':
+        current_words = {word: words[word] for word in user_data[user_id]['errors']}
+        print(f"Errors mode, words: {list(current_words.keys())}")
     else:
+        current_words = words
+        print(f"All mode, words sample: {list(current_words.keys())[:5]}")
+
+    if not current_words:
+        print(f"No words available for user {user_id}")
+        await update.message.reply_text(
+            "Список слов пуст. Проверь массив words и попробуй снова с /start.",
+            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
+        )
+        user_data[user_id]['training_mode'] = None
         return
 
-    if mode in ("accents", "accents_errors"):
-        word, options = random.choice(list(current_words.items()))
-        correct_option = options[0]
-        random.shuffle(options)
-        keyboard = [[{"text": option}] for option in options]
-        keyboard.append([{"text": "Главное меню"}])
-        await update.message.reply_text(
-            f"Выбери правильное ударение: {word}",
-            reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
-        )
-    elif mode in ("pre_pri", "pre_pri_errors"):
-        word, correct_answer = random.choice(list(current_words.items()))
-        keyboard = pre_pri_keyboard
-        await update.message.reply_text(
-            f"Выбери правильную букву: {word}",
-            reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
-        )
-        correct_option = "Е" if "Е" in correct_answer else "И"
+    
+    word, options = random.choice(list(current_words.items()))
+    correct_option = options[0]  # Правильный ответ — первый
+    random.shuffle(options)
+    print(f"Chosen word: {word}, options: {options}, correct: {correct_option}")
 
     user_data[user_id]['current_word'] = word
     user_data[user_id]['correct_option'] = correct_option
+
+    keyboard = [[{"text": option}] for option in options]  # Каждый вариант в отдельной строке
+    keyboard.append([{"text": "Главное меню"}])
+    markup = {
+        "keyboard": keyboard,
+        "resize_keyboard": True,
+        "one_time_keyboard": True
+    }
+    print(f"Sending question to user {user_id} with keyboard: {keyboard}")
+    await update.message.reply_text(
+        f"Выбери правильное ударение: {word}",
+        reply_markup=markup
+    )
 
 # Функция для проверки ответа
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
+    print(f"check_answer: Received '{text}' from user {user_id}")
 
     if text == "Главное меню":
         await send_main_menu(update, context)
         return
 
+    if user_id not in user_data or 'correct_option' not in user_data[user_id]:
+        print(f"Data missing for user {user_id}")
+        await update.message.reply_text("Данные потеряны. Начни заново с /start.")
+        return
+
     correct_option = user_data[user_id]['correct_option']
     word = user_data[user_id]['current_word']
-    mode = user_data[user_id]['training_mode']
+    training_mode = user_data[user_id]['training_mode']
+    print(f"Checking: user_answer='{text}', correct_option='{correct_option}', word='{word}'")
 
-    if mode in ("accents", "accents_errors"):
-        if text == correct_option:
-            await update.message.reply_text(f"✅ Правильно! {correct_option}")
-            if mode == "accents_errors" and word in user_data[user_id]['errors']['accents']:
-                user_data[user_id]['errors']['accents'].remove(word)
-        else:
-            await update.message.reply_text(f"❌ Неправильно. Правильный ответ: {correct_option}")
-            if mode == "accents" and word not in user_data[user_id]['errors']['accents']:
-                user_data[user_id]['errors']['accents'].append(word)
-    elif mode in ("pre_pri", "pre_pri_errors"):
-        correct_answer = pre_pri_words[word]
-        if text == correct_option:
-            await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
-            if mode == "pre_pri_errors" and word in user_data[user_id]['errors']['pre_pri']:
-                user_data[user_id]['errors']['pre_pri'].remove(word)
-        else:
-            await update.message.reply_text(f"❌ Неправильно. Верное написание: {correct_answer}")
-            if mode == "pre_pri" and word not in user_data[user_id]['errors']['pre_pri']:
-                user_data[user_id]['errors']['pre_pri'].append(word)
-
-    if mode == "accents_errors" and not user_data[user_id]['errors']['accents']:
-        await update.message.reply_text(
-            "🎉 Все ошибки в ударениях исправлены!",
-            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-        )
-        user_data[user_id]['training_mode'] = None
-        return
-    elif mode == "pre_pri_errors" and not user_data[user_id]['errors']['pre_pri']:
-        await update.message.reply_text(
-            "🎉 Все ошибки в ПРЕ - ПРИ исправлены!",
-            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-        )
-        user_data[user_id]['training_mode'] = None
-        return
+    if text == correct_option:
+        print(f"Correct answer for user {user_id}: {correct_option}")
+        await update.message.reply_text(f"✅ Правильно! {correct_option}")
+        if training_mode == 'errors' and word in user_data[user_id]['errors']:
+            user_data[user_id]['errors'].remove(word)
+            print(f"Removed {word} from errors for user {user_id}")
+            if not user_data[user_id]['errors']:
+                await update.message.reply_text(
+                    "🎉 Все ошибки исправлены!",
+                    reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
+                )
+                user_data[user_id]['training_mode'] = None
+                return
+    else:
+        print(f"Wrong answer for user {user_id}: {text}, correct: {correct_option}")
+        await update.message.reply_text(f"❌ Неправильно. Правильный ответ: {correct_option}")
+        if training_mode == 'all' and word not in user_data[user_id]['errors']:
+            user_data[user_id]['errors'].append(word)
+            print(f"Added {word} to errors for user {user_id}")
 
     await send_question(update, context)
-
+    
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
+    print(f"show_errors_menu: Showing errors for user {user_id}")
     errors = user_data[user_id]['errors']
-    if not errors['accents'] and not errors['pre_pri']:
+    if not errors:
         await update.message.reply_text(
             "У тебя пока нет ошибок.",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
     else:
-        accents_list = "\n".join(errors['accents']) if errors['accents'] else "Нет ошибок"
-        pre_pri_list = "\n".join(errors['pre_pri']) if errors['pre_pri'] else "Нет ошибок"
+        errors_list = "\n".join(errors)
         await update.message.reply_text(
-            f"Твои ошибки:\nУдарения:\n{accents_list}\n\nПРЕ - ПРИ:\n{pre_pri_list}\n\nЧто исправлять?",
+            f"Твои ошибки:\n{errors_list}\n\nВыбери действие:",
             reply_markup={"keyboard": errors_menu_keyboard, "resize_keyboard": True}
         )
-        user_data[user_id]['training_mode'] = "errors"
-
-# Обработчик выбора в меню ошибок
-async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_chat.id
-    text = update.message.text.strip()
-
-    if user_data[user_id]['training_mode'] == "errors":
-        if text == "Ударения":
-            if not user_data[user_id]['errors']['accents']:
-                await update.message.reply_text(
-                    "У тебя нет ошибок в ударениях.",
-                    reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-                )
-            else:
-                await start_training(update, context, mode="accents", use_errors=True)
-        elif text == "ПРЕ - ПРИ":
-            if not user_data[user_id]['errors']['pre_pri']:
-                await update.message.reply_text(
-                    "У тебя нет ошибок в ПРЕ - ПРИ.",
-                    reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-                )
-            else:
-                await start_training(update, context, mode="pre_pri", use_errors=True)
-        elif text == "Главное меню":
-            await send_main_menu(update, context)
 
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda update, context: handle_errors_choice(update, context) if user_data.get(update.effective_chat.id, {}).get('training_mode') == "errors" else handle_message(update, context)))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 # Запуск бота
 def main():
