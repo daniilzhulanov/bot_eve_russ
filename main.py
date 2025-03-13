@@ -752,14 +752,14 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             if mode == "pre_pri" and word not in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].append(word)
     elif mode in ("morphology", "morphology_errors"):
-    if text.lower() == correct_option.lower():
-        await update.message.reply_text(f"✅ Верно! Правильное написание: {correct_option}")
-        if mode == "morphology_errors" and word in user_data[user_id]['errors']['morphology']:
-            user_data[user_id]['errors']['morphology'].remove(word)
-    else:
-        await update.message.reply_text(f"❌ Ошибка. Правильное написание: {correct_option}")
-        if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
-            user_data[user_id]['errors']['morphology'].append(word)
+        if text.lower() == correct_option.lower():
+            await update.message.reply_text(f"✅ Верно! Правильное написание: {correct_option}")
+            if mode == "morphology_errors" and word in user_data[user_id]['errors']['morphology']:
+                user_data[user_id]['errors']['morphology'].remove(word)
+        else:
+            await update.message.reply_text(f"❌ Ошибка. Правильное написание: {correct_option}")
+            if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
+                user_data[user_id]['errors']['morphology'].append(word)
 
     # Проверка завершения режима ошибок
     if mode.endswith("_errors") and not user_data[user_id]['errors'][mode.split('_')[0]]:
