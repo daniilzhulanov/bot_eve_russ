@@ -724,12 +724,18 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 # Функция для проверки ответа
+# Функция для проверки ответа
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
 
     if text == "Главное меню":
         await send_main_menu(update, context)
+        return
+
+    # Если текущего слова нет, игнорируем ввод и отправляем новый вопрос
+    if user_data[user_id]['current_word'] is None:
+        await send_question(update, context)
         return
 
     correct_option = user_data[user_id]['correct_option']
