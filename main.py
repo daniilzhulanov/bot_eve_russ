@@ -655,6 +655,8 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_id = update.effective_chat.id
     mode = user_data[user_id]['training_mode']
 
+    print(f"Отправка вопроса: user_id={user_id}, mode={mode}")
+
     if mode == "accents":
         current_words = words
     elif mode == "accents_errors":
@@ -671,7 +673,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     elif mode == "pre_pri_errors":
         current_words = {word: pre_pri_words[word] for word in user_data[user_id]['errors']['pre_pri'] if word in pre_pri_words}
         if not current_words:
-            update.message.reply_text(
+            await update.message.reply_text(
                 "Все ошибки в ПРЕ - ПРИ исправлены или их нет!",
                 reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
             )
@@ -689,51 +691,60 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             user_data[user_id]['training_mode'] = None
             return
     else:
+        print(f"Ошибка: неизвестный режим {mode}")
         return
 
-    if mode in ("accents", "accents_errors"):
-        word, options = random.choice(list(current_words.items()))
-        correct_option = options[0]  # Правильный вариант из словаря
-        options_list = options.copy()  # Копируем список, чтобы не менять оригинал
-        random.shuffle(options_list)   # Перемешиваем копию
-        keyboard = [[{"text": option}] for option in options_list]
-        keyboard.append([{"text": "Главное меню"}])
-        await update.message.reply_text(
-            f"Выбери правильное ударение: {word}",
-            reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
-        )
-        print(f"Вопрос: слово={word}, правильный ответ={correct_option}, варианты={options_list}")  # Отладка
-    elif mode in ("pre_pri", "pre_pri_errors"):
-        word, correct_answer = random.choice(list(current_words.items()))
-        keyboard = pre_pri_keyboard
-        await update.message.reply_text(
-            f"Выбери правильную букву: {word}",
-            reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
-        )
-        correct_option = "Е" if "Е" in correct_answer else "И"
-    elif mode in ("morphology", "morphology_errors"):
-        word, correct_answer = random.choice(list(current_words.items()))
-        keyboard = [[{"text": "Главное меню"}]]
-        await update.message.reply_text(
-            f"Напиши правильную форму слова: {word}",
-            reply_markup={"keyboard": keyboard, "resize_keyboard": True}
-        )
-        correct_option = correct_answer
+    try:
+        if mode in ("accents", "accents_errors"):
+            word, options = random.choice(list(current_words.items()))
+            correct_option = options[0]
+            options_list = options.copy()
+            random.shuffle(options_list)
+            keyboard = [[{"text": option}] for option in options_list]
+            keyboard.append([{"text": "Главное меню"}])
+            await update.message.reply_text(
+                f"Выбери правильное ударение: {word}",
+                reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
+            )
+        elif mode in ("pre_pri", "pre_pri_errors"):
+            word, correct_answer = random.choice(list(current_words.items()))
+            keyboard = pre_pri_keyboard
+            await update.message.reply_text(
+                f"Выбери правильную букву: {word}",
+                reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
+            )
+            correct_option = "Е" if "Е" in correct_answer else "И"
+        elif mode in ("morphology", "morphology_errors"):
+            word, correct_answer = random.choice(list(current_words.items()))
+            keyboard = [[{"text": "Главное меню"}]]
+            await update.message.reply_text(
+                f"Напиши правильную форму слова: {word}",
+                reply_markup={"keyboard": keyboard, "resize_keyboard": True}
+            )
+            correct_option = correct_answer
 
-    user_data[user_id]['current_word'] = word
-    user_data[user_id]['correct_option'] = correct_option
+        user_data[user_id]['current_word'] = word
+        user_data[user_id]['correct_option'] = correct_option
+        print(f"Вопрос отправлен: слово={word}, правильный ответ={correct_option}")
+    except Exception as e:
+        print(f"Ошибка в send_question: {e}")
+        await update.message.reply_text("Произошла ошибка. Возвращаюсь в главное меню.")
+        await send_main_menu(update, context)
 
 # Функция для проверки ответа
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
 
+    print(f"Проверка ответа: user_id={user_id}, текст={text}")
+
     if text == "Главное меню":
         await send_main_menu(update, context)
         return
 
-    # Если текущего слова нет, игнорируем ввод и отправляем новый вопрос
+    # Если текущего слова нет, отправляем новый вопрос
     if user_data[user_id]['current_word'] is None:
+        print("Текущее слово отсутствует, отправляю новый вопрос")
         await send_question(update, context)
         return
 
@@ -743,57 +754,64 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     print(f"Проверка: режим={mode}, слово={word}, введено={text}, правильный ответ={correct_option}")
 
-    if mode in ("accents", "accents_errors"):
-        if text == correct_option:
-            await update.message.reply_text(f"✅ Правильно! {correct_option}")
-            if mode == "accents_errors" and word in user_data[user_id]['errors']['accents']:
-                user_data[user_id]['errors']['accents'].remove(word)
-        else:
-            await update.message.reply_text(f"❌ Неправильно. Правильный ответ: {correct_option}")
-            if mode == "accents" and word not in user_data[user_id]['errors']['accents']:
-                user_data[user_id]['errors']['accents'].append(word)
-    elif mode in ("pre_pri", "pre_pri_errors"):
-        correct_answer = pre_pri_words[word]
-        correct_letter = "Е" if "Е" in correct_answer else "И"
-        print(f"PRE-PRI: введено={text}, правильная буква={correct_letter}, слово={correct_answer}")
-        if text == correct_letter:
-            await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
-            if mode == "pre_pri_errors" and word in user_data[user_id]['errors']['pre_pri']:
-                user_data[user_id]['errors']['pre_pri'].remove(word)
-        else:
-            await update.message.reply_text(f"❌ Неправильно. Верное написание: {correct_answer}")
-            if mode == "pre_pri" and word not in user_data[user_id]['errors']['pre_pri']:
-                user_data[user_id]['errors']['pre_pri'].append(word)
-    elif mode in ("morphology", "morphology_errors"):
-        if text.lower() == correct_option.lower():
-            await update.message.reply_text(f"✅ Верно! Правильное написание: {correct_option}")
-            if mode == "morphology_errors" and word in user_data[user_id]['errors']['morphology']:
-                user_data[user_id]['errors']['morphology'].remove(word)
-        else:
-            await update.message.reply_text(f"❌ Ошибка. Правильное написание: {correct_option}")
-            if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
-                user_data[user_id]['errors']['morphology'].append(word)
+    try:
+        if mode in ("accents", "accents_errors"):
+            if text == correct_option:
+                await update.message.reply_text(f"✅ Правильно! {correct_option}")
+                if mode == "accents_errors" and word in user_data[user_id]['errors']['accents']:
+                    user_data[user_id]['errors']['accents'].remove(word)
+            else:
+                await update.message.reply_text(f"❌ Неправильно. Правильный ответ: {correct_option}")
+                if mode == "accents" and word not in user_data[user_id]['errors']['accents']:
+                    user_data[user_id]['errors']['accents'].append(word)
+        elif mode in ("pre_pri", "pre_pri_errors"):
+            correct_answer = pre_pri_words[word]
+            correct_letter = "Е" if "Е" in correct_answer else "И"
+            print(f"PRE-PRI: введено={text}, правильная буква={correct_letter}, слово={correct_answer}")
+            if text == correct_letter:
+                await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
+                if mode == "pre_pri_errors" and word in user_data[user_id]['errors']['pre_pri']:
+                    user_data[user_id]['errors']['pre_pri'].remove(word)
+            else:
+                await update.message.reply_text(f"❌ Неправильно. Верное написание: {correct_answer}")
+                if mode == "pre_pri" and word not in user_data[user_id]['errors']['pre_pri']:
+                    user_data[user_id]['errors']['pre_pri'].append(word)
+        elif mode in ("morphology", "morphology_errors"):
+            if text.lower() == correct_option.lower():
+                await update.message.reply_text(f"✅ Верно! Правильное написание: {correct_option}")
+                if mode == "morphology_errors" and word in user_data[user_id]['errors']['morphology']:
+                    user_data[user_id]['errors']['morphology'].remove(word)
+            else:
+                await update.message.reply_text(f"❌ Ошибка. Правильное написание: {correct_option}")
+                if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
+                    user_data[user_id]['errors']['morphology'].append(word)
 
-    # Сбрасываем текущие данные перед следующим вопросом
-    user_data[user_id]['current_word'] = None
-    user_data[user_id]['correct_option'] = None
+        # Сбрасываем текущие данные
+        user_data[user_id]['current_word'] = None
+        user_data[user_id]['correct_option'] = None
+        print(f"Данные сброшены: current_word={user_data[user_id]['current_word']}")
 
-    # Логика завершения режима ошибок и перехода к следующему вопросу
-    if mode.endswith("_errors"):
-        error_list = user_data[user_id]['errors'][mode.split('_')[0]]
-        if not error_list:
-            await update.message.reply_text(
-                f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!",
-                reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-            )
-            user_data[user_id]['training_mode'] = None
-            print("Режим ошибок завершен")
+        # Переход к следующему вопросу или завершение режима ошибок
+        if mode.endswith("_errors"):
+            error_list = user_data[user_id]['errors'][mode.split('_')[0]]
+            if not error_list:
+                await update.message.reply_text(
+                    f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!",
+                    reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
+                )
+                user_data[user_id]['training_mode'] = None
+                print("Режим ошибок завершен")
+            else:
+                print(f"Осталось ошибок: {len(error_list)}. Переход к следующему вопросу.")
+                await send_question(update, context)
         else:
-            print(f"Осталось ошибок: {len(error_list)}. Переход к следующему вопросу.")
+            print("Обычный режим. Переход к следующему вопросу.")
             await send_question(update, context)
-    else:
-        print("Обычный режим. Переход к следующему вопросу.")
-        await send_question(update, context)
+
+    except Exception as e:
+        print(f"Ошибка в check_answer: {e}")
+        await update.message.reply_text("Произошла ошибка при проверке ответа. Возвращаюсь в главное меню.")
+        await send_main_menu(update, context)
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
