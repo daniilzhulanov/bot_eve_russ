@@ -9,12 +9,6 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
-# Загрузка токена из переменной окружения
-TOKEN = os.environ.get("TOKEN")
-if not TOKEN:
-    raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
-
-
 # Словарь для "Ударений" 
 words = {
     "аэропорты": ["аэропОрты", "аэропортЫ"],
@@ -580,6 +574,7 @@ morphology_words = {
     "сардины (р.п.)": "сардин",
     "узы (р.п.)": "уз"
 }
+
 user_data = {}
 
 main_menu_keyboard = [
