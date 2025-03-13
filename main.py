@@ -9,6 +9,7 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
+
 # Словарь для "Ударений" 
 words = {
     "аэропорты": ["аэропОрты", "аэропортЫ"],
@@ -699,6 +700,7 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, mod
     user_data[user_id]['training_mode'] = f"{mode}_errors" if use_errors else mode
     await send_question(update, context)
 
+
 async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     mode = user_data[user_id]['training_mode']
@@ -769,6 +771,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     user_data[user_id]['current_word'] = word
     user_data[user_id]['correct_option'] = correct_option
+
 
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
