@@ -797,6 +797,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await update.message.reply_text("Произошла ошибка. Возвращаюсь в главное меню.")
         await send_main_menu(update, context)
 
+
 # Обработчики ответов для разных режимов
 async def handle_accents_answer(user_id, text, word, correct_option, mode):
     if text == correct_option:
@@ -881,6 +882,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         logger.error(f"Ошибка в check_answer: {e}")
         await update.message.reply_text("Произошла ошибка при проверке ответа. Возвращаюсь в главное меню.")
         await send_main_menu(update, context)
+
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
