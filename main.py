@@ -8,7 +8,6 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
-
 # Словарь для "Ударений" 
 words = {
     "аэропорты": ["аэропОрты", "аэропортЫ"],
@@ -649,7 +648,6 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, mod
     user_data[user_id]['training_mode'] = f"{mode}_errors" if use_errors else mode
     await send_question(update, context)
 
-
 # Функция для отправки вопроса
 async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -867,7 +865,6 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
                 await start_training(update, context, mode="morphology", use_errors=True)
         elif text == "Главное меню":
             await send_main_menu(update, context)
-
 
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
