@@ -753,6 +753,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     print(f"Проверка: режим={mode}, слово={word}, введено={text}, правильный ответ={correct_option}")
 
     try:
+        # Обработка ответа
         if mode in ("accents", "accents_errors"):
             if text == correct_option:
                 await update.message.reply_text(f"✅ Правильно! {correct_option}")
@@ -786,15 +787,17 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
                     user_data[user_id]['errors']['morphology'].append(word)
 
-        # Сбрасываем текущие данные
+        # Сбрасываем данные
         print("Сбрасываю данные перед переходом к следующему вопросу")
         user_data[user_id]['current_word'] = None
         user_data[user_id]['correct_option'] = None
 
         # Переход к следующему вопросу или завершение режима
         if mode.endswith("_errors"):
-            error_list = user_data[user_id]['errors'][mode.split('_')[0]]
-            print(f"Проверка ошибок: {mode.split('_')[0]}, осталось ошибок: {len(error_list)}")
+            # Исправляем ключ: берём первые два слова до '_errors'
+            mode_key = mode.replace('_errors', '')  # 'pre_pri_errors' -> 'pre_pri'
+            error_list = user_data[user_id]['errors'][mode_key]
+            print(f"Проверка ошибок: {mode_key}, осталось ошибок: {len(error_list)}")
             if not error_list:
                 await update.message.reply_text(
                     f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!",
