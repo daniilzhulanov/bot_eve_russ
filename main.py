@@ -8,6 +8,7 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
+
 # Словарь для "Ударений" 
 words = {
     "аэропорты": ["аэропОрты", "аэропортЫ"],
@@ -575,6 +576,7 @@ morphology_words = {
     "узы (р.п.)": "Уз"
 }
 
+
 # Хранилище данных пользователей
 user_data = {}
 
@@ -630,7 +632,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "Пожалуйста, используй кнопки для навигации.",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
-
+        
 # Функция для отправки главного меню
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
