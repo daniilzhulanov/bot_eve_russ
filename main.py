@@ -348,9 +348,8 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_data[user_id]['current_word'] = word
     user_data[user_id]['correct_option'] = correct_option
 
-    # Исправляем формирование клавиатуры
     keyboard = [[{"text": option}] for option in options]  # Каждый вариант в отдельной строке
-    keyboard.append([{"text": "Главное меню"}])  # Добавляем кнопку "Главное меню" как отдельную строку
+    keyboard.append([{"text": "Главное меню"}])
     markup = {
         "keyboard": keyboard,
         "resize_keyboard": True,
@@ -380,6 +379,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     correct_option = user_data[user_id]['correct_option']
     word = user_data[user_id]['current_word']
     training_mode = user_data[user_id]['training_mode']
+    print(f"Checking: user_answer='{text}', correct_option='{correct_option}', word='{word}'")
 
     if text == correct_option:
         print(f"Correct answer for user {user_id}: {correct_option}")
@@ -402,7 +402,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             print(f"Added {word} to errors for user {user_id}")
 
     await send_question(update, context)
-
+    
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
