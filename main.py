@@ -793,7 +793,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         user_data[user_id]['current_word'] = None
         user_data[user_id]['correct_option'] = None
 
-        # Проверяем режим ошибок
+        # Переход к следующему вопросу или завершение режима
         if mode.endswith("_errors"):
             error_list = user_data[user_id]['errors'][mode.split('_')[0]]
             print(f"Проверка ошибок: {mode.split('_')[0]}, осталось ошибок: {len(error_list)}")
