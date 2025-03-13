@@ -736,6 +736,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     mode = user_data[user_id]['training_mode']
 
     if mode in ("accents", "accents_errors"):
+        print(f"Проверка: слово={word}, введено={text}, правильный ответ={correct_option}")  # Отладка
         if text == correct_option:
             await update.message.reply_text(f"✅ Правильно! {correct_option}")
             if mode == "accents_errors" and word in user_data[user_id]['errors']['accents']:
