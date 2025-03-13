@@ -610,7 +610,6 @@ def update_daily_stats(user_id):
             'fixed': 0
         }
 
-
 def get_stats_message(user_id):
     update_daily_stats(user_id)
     stats = user_data[user_id]['stats']
@@ -618,7 +617,6 @@ def get_stats_message(user_id):
             f"Правильных ответов: {stats['correct']}\n"
             f"Ошибок: {stats['wrong']}\n"
             f"Исправлено ошибок: {stats['fixed']}")
-
 
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -638,7 +636,6 @@ async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "Что будем тренировать?",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
-
 
 async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -828,8 +825,10 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     await update.message.reply_text(message)
 
+    # Отладка: выводим состояние списка ошибок
     if mode.endswith("_errors"):
         error_list = user_data[user_id]['errors'][mode.split('_')[0]]
+        print(f"Режим: {mode}, Список ошибок после ответа: {error_list}")
         if not error_list:
             await update.message.reply_text(
                 f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!",
@@ -838,9 +837,11 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             user_data[user_id]['training_mode'] = None
             return
         else:
+            print(f"Переход к следующему вопросу в режиме {mode}")
             await send_question(update, context)
     else:
         await send_question(update, context)
+
 
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
