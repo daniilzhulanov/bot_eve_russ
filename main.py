@@ -487,7 +487,7 @@ async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     errors = user_data[user_id]['errors']
     if not errors['accents'] and not errors['pre_pri']:
         await update.message.reply_text(
-            "У тебя пока нет ошибок.",
+            "У тебя нет ошибок, умничка!",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
     else:
@@ -505,18 +505,18 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
     text = update.message.text.strip()
 
     if user_data[user_id]['training_mode'] == "errors":
-        if text == "Ударения":
+        if text == "**Ударения:**":
             if not user_data[user_id]['errors']['accents']:
                 await update.message.reply_text(
-                    "У тебя нет ошибок в ударениях.",
+                    "У тебя нет ошибок в ударениях!",
                     reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
                 )
             else:
                 await start_training(update, context, mode="accents", use_errors=True)
-        elif text == "ПРЕ - ПРИ":
+        elif text == "**ПРЕ - ПРИ:**":
             if not user_data[user_id]['errors']['pre_pri']:
                 await update.message.reply_text(
-                    "У тебя нет ошибок в ПРЕ - ПРИ.",
+                    "У тебя нет ошибок в ПРЕ - ПРИ!",
                     reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
                 )
             else:
