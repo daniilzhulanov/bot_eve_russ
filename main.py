@@ -8,7 +8,6 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
-
 # Словарь для "Ударений" 
 words = {
     "аэропорты": ["аэропОрты", "аэропортЫ"],
@@ -575,7 +574,6 @@ morphology_words = {
     "узы (р.п.)": "уз"
 }
 
-
 # Хранилище данных пользователей
 user_data = {}
 
@@ -780,7 +778,6 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await send_question(update, context)
     else:
         await send_question(update, context)
-
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
