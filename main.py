@@ -734,8 +734,9 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     word = user_data[user_id]['current_word']
     mode = user_data[user_id]['training_mode']
 
+    print(f"Проверка: режим={mode}, слово={word}, введено={text}, правильный ответ={correct_option}")
+
     if mode in ("accents", "accents_errors"):
-        print(f"Проверка: слово={word}, введено={text}, правильный ответ={correct_option}")
         if text == correct_option:
             await update.message.reply_text(f"✅ Правильно! {correct_option}")
             if mode == "accents_errors" and word in user_data[user_id]['errors']['accents']:
@@ -746,9 +747,9 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 user_data[user_id]['errors']['accents'].append(word)
     elif mode in ("pre_pri", "pre_pri_errors"):
         correct_answer = pre_pri_words[word]
-        user_answer = "Е" if text == "Е" else "И"  # Убедимся, что ответ интерпретируется корректно
         correct_letter = "Е" if "Е" in correct_answer else "И"
-        if user_answer == correct_letter:
+        print(f"PRE-PRI: введено={text}, правильная буква={correct_letter}, слово={correct_answer}")
+        if text == correct_letter:
             await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
             if mode == "pre_pri_errors" and word in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].remove(word)
@@ -766,7 +767,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
                 user_data[user_id]['errors']['morphology'].append(word)
 
-    # Проверка завершения режима ошибок и переход к следующему вопросу
+    # Логика завершения режима ошибок и перехода к следующему вопросу
     if mode.endswith("_errors"):
         error_list = user_data[user_id]['errors'][mode.split('_')[0]]
         if not error_list:
@@ -775,10 +776,13 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
             )
             user_data[user_id]['training_mode'] = None
+            print("Режим ошибок завершен")
         else:
-            await send_question(update, context)  # Всегда вызываем следующее слово, если ошибки есть
+            print(f"Осталось ошибок: {len(error_list)}. Переход к следующему вопросу.")
+            await send_question(update, context)
     else:
-        await send_question(update, context)  # В обычном режиме тоже вызываем следующее слово
+        print("Обычный режим. Переход к следующему вопросу.")
+        await send_question(update, context)
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
