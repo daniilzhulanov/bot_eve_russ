@@ -574,6 +574,7 @@ morphology_words = {
     "узы (р.п.)": "уз"
 }
 
+
 # Хранилище данных пользователей
 user_data = {}
 
@@ -629,6 +630,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "Пожалуйста, используй кнопки для навигации.",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
+
 
 # Функция для отправки главного меню
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
