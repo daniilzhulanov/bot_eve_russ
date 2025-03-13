@@ -648,6 +648,7 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, mod
     user_data[user_id]['training_mode'] = f"{mode}_errors" if use_errors else mode
     await send_question(update, context)
 
+
 # Функция для отправки вопроса
 async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -720,6 +721,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     user_data[user_id]['current_word'] = word
     user_data[user_id]['correct_option'] = correct_option
+
 
 # Функция для проверки ответа
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
