@@ -761,18 +761,24 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         else:
             await update.message.reply_text(f"❌ Ошибка. Правильное написание: {correct_option}")
             if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
-                user_data[user_id]['errors']['morphology'].append(word))
+                user_data[user_id]['errors']['morphology'].append(word)
 
-    # Проверка завершения режима ошибок
-    if mode.endswith("_errors") and not user_data[user_id]['errors'][mode.split('_')[0]]:
-        await update.message.reply_text(
-            f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!",
-            reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-        )
-        user_data[user_id]['training_mode'] = None
-        return
-
-    await send_question(update, context)
+    # Проверка завершения режима ошибок и переход к следующему вопросу
+    if mode.endswith("_errors"):
+        error_list = user_data[user_id]['errors'][mode.split('_')[0]]
+        if not error_list:
+            await update.message.reply_text(
+                f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!",
+                reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
+            )
+            user_data[user_id]['training_mode'] = None
+            return
+        else:
+            # Если остались ошибки, отправляем следующий вопрос
+            await send_question(update, context)
+    else:
+        # Для обычного режима просто отправляем следующий вопрос
+        await send_question(update, context)
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
