@@ -825,10 +825,9 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     await update.message.reply_text(message)
 
-    # Отладка: выводим состояние списка ошибок
+    # Проверка завершения режима ошибок и переход к следующему вопросу
     if mode.endswith("_errors"):
         error_list = user_data[user_id]['errors'][mode.split('_')[0]]
-        print(f"Режим: {mode}, Список ошибок после ответа: {error_list}")
         if not error_list:
             await update.message.reply_text(
                 f"🎉 Все ошибки в {'ударениях' if mode == 'accents_errors' else 'ПРЕ - ПРИ' if mode == 'pre_pri_errors' else 'морфологических нормах'} исправлены!",
@@ -837,10 +836,10 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             user_data[user_id]['training_mode'] = None
             return
         else:
-            print(f"Переход к следующему вопросу в режиме {mode}")
             await send_question(update, context)
     else:
         await send_question(update, context)
+
 
 
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
