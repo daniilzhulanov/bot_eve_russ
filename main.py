@@ -8,7 +8,7 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
-# Словарь слов с вариантами ударений
+# Словарь слов с вариантами ударений (вставьте ваш массив words сюда)
 words = {
     "аэропорты": ["аэропОрты", "аэропортЫ"],
     "банты": ["бАнты", "бантЫ"],
@@ -239,8 +239,6 @@ words = {
     "ненадолго": ["ненадОлго", "ненАдолго"]
 }
 
-
-# Словарь слов с пре-/при-
 pre_pri_words = {
     "пр..следовать": "прЕследовать",
     "пр..нудить": "прИнудить",
@@ -311,6 +309,25 @@ pre_pri_words = {
 }
 
 
+# Хранилище данных пользователей
+user_data = {}
+
+# Клавиатура для главного меню
+main_menu_keyboard = [
+    [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Ошибки"}]
+]
+
+# Клавиатура для меню ошибок
+errors_menu_keyboard = [
+    [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Главное меню"}]
+]
+
+# Клавиатура для ПРЕ - ПРИ
+pre_pri_keyboard = [
+    [{"text": "Е"}, {"text": "И"}],
+    [{"text": "Главное меню"}]
+]
+
 # Инициализация приложения
 application = Application.builder().token(TOKEN).build()
 
@@ -329,9 +346,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     text = update.message.text.strip()
 
     if text == "Ударения":
-        await start_training(update, context, mode="accents")
+        await start_training(update, context, mode="accents", use_errors=False)
     elif text == "ПРЕ - ПРИ":
-        await start_training(update, context, mode="pre_pri")
+        await start_training(update, context, mode="pre_pri", use_errors=False)
     elif text == "Ошибки":
         await show_errors_menu(update, context)
     elif text == "Главное меню":
@@ -354,12 +371,12 @@ async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_data[user_id]['training_mode'] = None
 
 # Функция для начала тренировки
-async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str) -> None:
+async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str, use_errors: bool = False) -> None:
     user_id = update.effective_chat.id
     if user_id not in user_data:
         user_data[user_id] = {'errors': {'accents': [], 'pre_pri': []}, 'training_mode': None, 'current_word': None, 'correct_option': None}
 
-    user_data[user_id]['training_mode'] = mode
+    user_data[user_id]['training_mode'] = f"{mode}_errors" if use_errors else mode
     await send_question(update, context)
 
 # Функция для отправки вопроса
@@ -369,8 +386,30 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     if mode == "accents":
         current_words = words
-        if user_data[user_id]['errors']['accents']:
-            current_words = {word: words[word] for word in user_data[user_id]['errors']['accents'] if word in words}
+    elif mode == "accents_errors":
+        current_words = {word: words[word] for word in user_data[user_id]['errors']['accents'] if word in words}
+        if not current_words:
+            await update.message.reply_text(
+                "Все ошибки в ударениях исправлены или их нет!",
+                reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
+            )
+            user_data[user_id]['training_mode'] = None
+            return
+    elif mode == "pre_pri":
+        current_words = pre_pri_words
+    elif mode == "pre_pri_errors":
+        current_words = {word: pre_pri_words[word] for word in user_data[user_id]['errors']['pre_pri'] if word in pre_pri_words}
+        if not current_words:
+            await update.message.reply_text(
+                "Все ошибки в ПРЕ - ПРИ исправлены или их нет!",
+                reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
+            )
+            user_data[user_id]['training_mode'] = None
+            return
+    else:
+        return
+
+    if mode in ("accents", "accents_errors"):
         word, options = random.choice(list(current_words.items()))
         correct_option = options[0]
         random.shuffle(options)
@@ -380,17 +419,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"Выбери правильное ударение: {word}",
             reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
         )
-    elif mode == "pre_pri":
-        current_words = pre_pri_words
-        if user_data[user_id]['errors']['pre_pri']:  # Если есть ошибки, используем только их
-            current_words = {word: pre_pri_words[word] for word in user_data[user_id]['errors']['pre_pri'] if word in pre_pri_words}
-        if not current_words:  # Если ошибок нет или они исчерпаны
-            await update.message.reply_text(
-                "Все ошибки исправлены или их нет!",
-                reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-            )
-            user_data[user_id]['training_mode'] = None
-            return
+    elif mode in ("pre_pri", "pre_pri_errors"):
         word, correct_answer = random.choice(list(current_words.items()))
         keyboard = pre_pri_keyboard
         await update.message.reply_text(
@@ -398,8 +427,6 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
         )
         correct_option = "Е" if "Е" in correct_answer else "И"
-    else:
-        return
 
     user_data[user_id]['current_word'] = word
     user_data[user_id]['correct_option'] = correct_option
@@ -417,36 +444,36 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     word = user_data[user_id]['current_word']
     mode = user_data[user_id]['training_mode']
 
-    if mode == "accents":
+    if mode in ("accents", "accents_errors"):
         if text == correct_option:
             await update.message.reply_text(f"✅ Правильно! {correct_option}")
-            if word in user_data[user_id]['errors']['accents']:
+            if mode == "accents_errors" and word in user_data[user_id]['errors']['accents']:
                 user_data[user_id]['errors']['accents'].remove(word)
         else:
             await update.message.reply_text(f"❌ Неправильно. Правильный ответ: {correct_option}")
-            if word not in user_data[user_id]['errors']['accents']:
+            if mode == "accents" and word not in user_data[user_id]['errors']['accents']:
                 user_data[user_id]['errors']['accents'].append(word)
-    elif mode == "pre_pri":
+    elif mode in ("pre_pri", "pre_pri_errors"):
         correct_answer = pre_pri_words[word]
         if text == correct_option:
             await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
-            if word in user_data[user_id]['errors']['pre_pri']:
+            if mode == "pre_pri_errors" and word in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].remove(word)
         else:
             await update.message.reply_text(f"❌ Неправильно. Верное написание: {correct_answer}")
-            if word not in user_data[user_id]['errors']['pre_pri']:
+            if mode == "pre_pri" and word not in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].append(word)
 
-    if not user_data[user_id]['errors']['pre_pri'] and mode == "pre_pri":
+    if mode == "accents_errors" and not user_data[user_id]['errors']['accents']:
         await update.message.reply_text(
-            "🎉 Все ошибки в ПРЕ - ПРИ исправлены!",
+            "🎉 Все ошибки в ударениях исправлены!",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
         user_data[user_id]['training_mode'] = None
         return
-    elif not user_data[user_id]['errors']['accents'] and mode == "accents":
+    elif mode == "pre_pri_errors" and not user_data[user_id]['errors']['pre_pri']:
         await update.message.reply_text(
-            "🎉 Все ошибки в ударениях исправлены!",
+            "🎉 Все ошибки в ПРЕ - ПРИ исправлены!",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
         user_data[user_id]['training_mode'] = None
@@ -485,8 +512,7 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
                     reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
                 )
             else:
-                user_data[user_id]['training_mode'] = "accents"
-                await send_question(update, context)
+                await start_training(update, context, mode="accents", use_errors=True)
         elif text == "ПРЕ - ПРИ":
             if not user_data[user_id]['errors']['pre_pri']:
                 await update.message.reply_text(
@@ -494,8 +520,9 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
                     reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
                 )
             else:
-                user_data[user_id]['training_mode'] = "pre_pri"
-                await send_question(update, context)
+                await start_training(update, context, mode="pre_pri", use_errors=True)
+        elif text == "Главное меню":
+            await send_main_menu(update, context)
 
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
