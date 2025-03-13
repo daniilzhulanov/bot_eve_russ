@@ -8,7 +8,6 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
-
 # Словарь слов с вариантами ударений (вставьте ваш массив words сюда)
 words = {
     "аэропорты": ["аэропОрты", "аэропортЫ"],
@@ -310,7 +309,6 @@ pre_pri_words = {
     "пр..налечь": "прИналечь"
 }
 
-
 # Хранилище данных пользователей
 user_data = {}
 
@@ -329,6 +327,7 @@ pre_pri_keyboard = [
     [{"text": "Е"}, {"text": "И"}],
     [{"text": "Главное меню"}]
 ]
+
 
 # Инициализация приложения
 application = Application.builder().token(TOKEN).build()
