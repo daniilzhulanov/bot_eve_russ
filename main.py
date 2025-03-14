@@ -1034,6 +1034,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                         f"**✅ Верно!**\n" +
                         f"Вы выбрали: *{text}*.\n" +
                         f"Выберите еще {remaining} {decline_features(remaining)}.",
+                        reply_markup={"keyboard": [[{"text": option}] for option in all_options if option not in user_choices] + [[{"text": "🔙 Главное меню"}]], "resize_keyboard": True, "one_time_keyboard": True},
                         parse_mode="Markdown"
                     )
                 else:
@@ -1042,6 +1043,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                         f"Вы выбрали: *{text}*.\n" +
                         f"Этот признак не относится к '{concept}'.\n" +
                         f"Выберите еще {remaining} {decline_features(remaining)}.",
+                        reply_markup={"keyboard": [[{"text": option}] for option in all_options if option not in user_choices] + [[{"text": "🔙 Главное меню"}]], "resize_keyboard": True, "one_time_keyboard": True},
                         parse_mode="Markdown"
                     )
 
@@ -1061,8 +1063,9 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                         await send_question(update, context)
                     else:
                         user_choices_text = "\n".join([f"{'🟢' if choice in correct_features else '🔴'} {choice}" for choice in user_choices])
-                        # Экранируем специальные символы для MarkdownV2
-                        correct_features_text = "\n".join([f"➤ ||{feature.replace('.', '\.').replace('(', '\(').replace(')', '\)')||" for feature in correct_features])
+                        # Экранируем специальные символы вне f-строки
+                        escaped_features = [feature.replace('.', '\.').replace('(', '\(').replace(')', '\)') for feature in correct_features]
+                        correct_features_text = "\n".join([f"➤ ||{feature}||" for feature in escaped_features])
                         await update.message.reply_text(
                             f"**Результат: {correct_count} правильных из 3**\n\n" +
                             f"✦ Вы выбрали:\n{user_choices_text}\n\n" +
