@@ -761,7 +761,6 @@ law_concepts = {
     "юридическое лицо": ["коммерческая и некоммерческая организация", "имеет в собственности или управлении обособленное имущество", "может от своего имени вступать в гражданские правоотношения", "может быть истцом и ответчиком в суде"]
 }
 
-
 # Хранилище данных пользователей
 user_data = {}
 
@@ -1158,11 +1157,9 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
         elif text == "Главное меню":
             await send_main_menu(update, context)
 
-
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda update, context: handle_errors_choice(update, context) if user_data.get(update.effective_chat.id, {}).get('training_mode') == "errors" else handle_message(update, context)))
-
 
 # Запуск бота
 def main():
