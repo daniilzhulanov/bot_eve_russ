@@ -1064,7 +1064,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                     else:
                         user_choices_text = "\n".join([f"{'🟢' if choice in correct_features else '🔴'} {choice}" for choice in user_choices])
                         # Экранируем специальные символы вне f-строки
-                        escaped_features = [feature.replace('.', '\.').replace('(', '\(').replace(')', '\)') for feature in correct_features]
+                        escaped_features = [feature.replace('.', r'.').replace('(', r'(').replace(')', r')') for feature in correct_features]
                         correct_features_text = "\n".join([f"➤ ||{feature}||" for feature in escaped_features])
                         await update.message.reply_text(
                             f"**Результат: {correct_count} правильных из 3**\n\n" +
