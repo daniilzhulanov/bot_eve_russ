@@ -759,8 +759,7 @@ user_data = {}
 # Клавиатура для главного меню
 main_menu_keyboard = [
     [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Морфологические нормы"}],
-    [{"text": "Общество. 18 задание"}],
-    [{"text": "Ошибки"}]
+    [{"text": "Общество. 18 задание"}, {"text": "Ошибки"}]
 ]
 
 # Клавиатура для подменю "Общество. 18 задание"
@@ -784,6 +783,15 @@ pre_pri_keyboard = [
 
 # Инициализация приложения
 application = Application.builder().token(TOKEN).build()
+
+# Функция для правильного склонения слова "признак"
+def decline_features(count):
+    if count % 10 == 1 and count % 100 != 11:
+        return "признак"
+    elif count % 10 in [2, 3, 4] and count % 100 not in [12, 13, 14]:
+        return "признака"
+    else:
+        return "признаков"
 
 # Приветственное сообщение и главное меню
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -940,15 +948,18 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             "право": law_concepts
         }[submode]
         concept, features = random.choice(list(concepts.items()))
-        correct_features = random.sample(features, min(3, len(features)))  # Выбираем 3 случайных признака из полного списка
+        correct_features = random.sample(features, min(3, len(features)))  # 3 случайных признака
         all_features = [f for c, fs in concepts.items() if c != concept for f in fs]
-        incorrect_features = random.sample(all_features, 3)  # 3 случайных признака от других понятий
+        incorrect_features = random.sample(all_features, 3)  # 3 неверных признака
         all_options = correct_features + incorrect_features
         random.shuffle(all_options)
-        keyboard = [[{"text": f}] for f in all_options] + [[{"text": "Главное меню"}]]
+        keyboard = [[{"text": f"🟡 {option}"}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
         await update.message.reply_text(
-            f"Выбери ТРИ признака, относящихся к понятию '{concept}':",
-            reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
+            f"**Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
+            "✦ Нажми на кнопки ниже, чтобы выбрать.\n" +
+            "✦ Выбирай внимательно, длинные признаки полностью видны на кнопках!",
+            reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
+            parse_mode="Markdown"
         )
         user_data[user_id]['current_concept'] = concept
         user_data[user_id]['correct_features'] = correct_features
@@ -959,6 +970,10 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
+    if text.startswith("🟡 "):  # Убираем эмодзи из текста ответа
+        text = text[2:].strip()
+    elif text.startswith("🔙 "):
+        text = text[2:].strip()
 
     if text == "Главное меню":
         await send_main_menu(update, context)
@@ -1014,39 +1029,61 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
         if text in all_options and text not in user_choices:
             user_choices.append(text)
+            remaining = 3 - len(user_choices)
             if len(user_choices) <= 3:
                 if text in correct_features:
-                    await update.message.reply_text(f"✅ Верно! Вы выбрали: {text}. Выберите еще {3 - len(user_choices)} признаков.")
+                    await update.message.reply_text(
+                        f"**✅ Верно!**\n" +
+                        f"Вы выбрали: *{text}*.\n" +
+                        f"Выберите еще {remaining} {decline_features(remaining)}.",
+                        parse_mode="Markdown"
+                    )
                 else:
-                    await update.message.reply_text(f"❌ Неверно! Вы выбрали: {text}. Этот признак не относится к '{concept}'. Выберите еще {3 - len(user_choices)} признаков.")
+                    await update.message.reply_text(
+                        f"**❌ Неверно!**\n" +
+                        f"Вы выбрали: *{text}*.\n" +
+                        f"Этот признак не относится к '{concept}'.\n" +
+                        f"Выберите еще {remaining} {decline_features(remaining)}.",
+                        parse_mode="Markdown"
+                    )
 
                 if len(user_choices) == 3:
                     correct_count = sum(1 for choice in user_choices if choice in correct_features)
                     if correct_count == 3:
-                        await update.message.reply_text(f"🎉 Поздравляю! Вы правильно выбрали все три признака для '{concept}':\n" + "\n".join(correct_features))
+                        await update.message.reply_text(
+                            f"**🎉 Поздравляю! Вы правильно выбрали все три {decline_features(3)} для '{concept}':**\n\n" +
+                            "\n".join([f"➤ *{feature}*" for feature in correct_features]) +
+                            "\n\n✦ Переходим к следующему вопросу!",
+                            parse_mode="Markdown"
+                        )
                         user_data[user_id]['current_concept'] = None
                         user_data[user_id]['correct_features'] = []
                         user_data[user_id]['user_choices'] = []
                         user_data[user_id]['all_options'] = []
                         await send_question(update, context)
                     else:
+                        user_choices_text = "\n".join([f"{'🟢' if choice in correct_features else '🔴'} {choice}" for choice in user_choices])
+                        correct_features_text = "\n".join([f"➤ *{feature}*" for feature in correct_features])
                         await update.message.reply_text(
-                            f"Вы выбрали {correct_count} правильных признаков из 3. Вот ваши выборы:\n" +
-                            "\n".join(user_choices) +
-                            f"\nПравильные признаки для '{concept}':\n" +
-                            "\n".join(correct_features) +
-                            "\nПопробуйте снова с этим же понятием."
+                            f"**Результат: {correct_count} правильных из 3**\n\n" +
+                            f"✦ Ваши выборы:\n{user_choices_text}\n\n" +
+                            f"✦ Правильные признаки для '{concept}':\n{correct_features_text}\n\n" +
+                            f"Попробуйте снова с этим же понятием!",
+                            parse_mode="Markdown"
                         )
                         user_data[user_id]['user_choices'] = []
-                        keyboard = [[{"text": f}] for f in all_options] + [[{"text": "Главное меню"}]]
+                        keyboard = [[{"text": f"🟡 {option}"}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
                         await update.message.reply_text(
-                            f"Выбери ТРИ признака для '{concept}':",
-                            reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
+                            f"**Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
+                            "✦ Нажми на кнопки ниже, чтобы выбрать.\n" +
+                            "✦ Выбирай внимательно, длинные признаки полностью видны на кнопках!",
+                            reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
+                            parse_mode="Markdown"
                         )
             else:
                 await update.message.reply_text("Вы уже выбрали 3 признака. Дождитесь проверки.")
         else:
-            await update.message.reply_text("Выберите признак из предложенных или вернитесь в главное меню.")
+            await update.message.reply_text("Выберите признак из предложенных кнопок или вернитесь в главное меню.")
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
