@@ -1,4 +1,5 @@
 import os
+import logging
 import random
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -7,6 +8,13 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
+
+# Настройка логирования
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 # Словари для существующих режимов
 words = {
@@ -820,22 +828,38 @@ async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 # Обработчик текстовых сообщений
+# Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
 
     if user_id not in user_data:
-        init_user_data(user_id)
+        user_data[user_id] = {
+            'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
+            'training_mode': None,
+            'current_word': None,
+            'correct_option': None,
+            'current_concept': None,
+            'correct_features': [],
+            'user_choices': [],
+            'all_options': [],
+            'society_18_submode': None
+        }
 
     if text == "Ударения":
+        logger.info(f"Пользователь {user_id} выбрал режим 'Ударения'")
         await start_training(update, context, mode="accents", use_errors=False)
     elif text == "ПРЕ - ПРИ":
+        logger.info(f"Пользователь {user_id} выбрал режим 'ПРЕ - ПРИ'")
         await start_training(update, context, mode="pre_pri", use_errors=False)
     elif text == "Морфологические нормы":
+        logger.info(f"Пользователь {user_id} выбрал режим 'Морфологические нормы'")
         await start_training(update, context, mode="morphology", use_errors=False)
     elif text == "Общество. 18 задание":
+        logger.info(f"Пользователь {user_id} выбрал режим 'Общество. 18 задание'")
         await show_society_18_menu(update, context)
     elif text == "Ошибки":
+        logger.info(f"Пользователь {user_id} выбрал режим 'Ошибки'")
         await show_errors_menu(update, context)
     elif text == "Главное меню":
         await send_main_menu(update, context)
