@@ -1067,7 +1067,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                         correct_features_text = "\n".join([f"➤ *{feature}*" for feature in correct_features])
                         await update.message.reply_text(
                             f"**Результат: {correct_count} правильных из 3**\n\n" +
-                            f"✦ Ваши выборы:\n{user_choices_text}\n\n" +
+                            f"✦ Вы выбрали:\n{user_choices_text}\n\n" +
                             f"✦ Правильные признаки для '{concept}':\n{correct_features_text}\n\n" +
                             f"Попробуйте снова с этим же понятием!",
                             parse_mode="Markdown"
