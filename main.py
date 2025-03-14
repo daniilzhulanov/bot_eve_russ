@@ -783,9 +783,22 @@ pre_pri_keyboard = [
     [{"text": "Главное меню"}]
 ]
 
-
 # Инициализация приложения
 application = Application.builder().token(TOKEN).build()
+
+# Функция инициализации данных пользователя
+def init_user_data(user_id):
+    user_data[user_id] = {
+        'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
+        'training_mode': None,
+        'current_word': None,
+        'correct_option': None,
+        'current_concept': None,
+        'correct_features': [],
+        'user_choices': [],
+        'all_options': [],
+        'society_18_submode': None
+    }
 
 # Функция для правильного склонения слова "признак"
 def decline_features(count):
@@ -799,26 +812,20 @@ def decline_features(count):
 # Приветственное сообщение и главное меню
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
+    if user_id not in user_data:
+        init_user_data(user_id)
     await update.message.reply_text(
         "Что будем тренировать?",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
-    user_data[user_id] = {
-        'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
-        'training_mode': None,
-        'current_word': None,
-        'correct_option': None,
-        'current_concept': None,
-        'correct_features': [],
-        'user_choices': [],
-        'all_options': [],
-        'society_18_submode': None
-    }
 
 # Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
+
+    if user_id not in user_data:
+        init_user_data(user_id)
 
     if text == "Ударения":
         await start_training(update, context, mode="accents", use_errors=False)
@@ -834,7 +841,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await send_main_menu(update, context)
     elif user_data[user_id]['training_mode'] == "society_18" and user_data[user_id]['society_18_submode'] is None:
         await handle_society_18_choice(update, context)
-    elif user_id in user_data and user_data[user_id]['training_mode'] is not None:
+    elif user_data[user_id]['training_mode'] is not None:
         await check_answer(update, context)
     else:
         await update.message.reply_text(
