@@ -903,7 +903,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if mode in ("accents", "accents_errors"):
         current_words = words if mode == "accents" else {word: words[word] for word in user_data[user_id]['errors']['accents']}
         if not current_words:
-            await update.message.reply_text("Все ошибки в ударениях исправлены или их нет!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            await update.message.reply_text("Все ошибки в ударениях исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
             user_data[user_id]['training_mode'] = None
             return
         word, options = random.choice(list(current_words.items()))
@@ -918,7 +918,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     elif mode in ("pre_pri", "pre_pri_errors"):
         current_words = pre_pri_words if mode == "pre_pri" else {word: pre_pri_words[word] for word in user_data[user_id]['errors']['pre_pri']}
         if not current_words:
-            await update.message.reply_text("Все ошибки в ПРЕ - ПРИ исправлены или их нет!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            await update.message.reply_text("Все ошибки в ПРЕ - ПРИ исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
             user_data[user_id]['training_mode'] = None
             return
         word, correct_answer = random.choice(list(current_words.items()))
@@ -929,7 +929,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     elif mode in ("morphology", "morphology_errors"):
         current_words = morphology_words if mode == "morphology" else {word: morphology_words[word] for word in user_data[user_id]['errors']['morphology']}
         if not current_words:
-            await update.message.reply_text("Все ошибки в морфологических нормах исправлены или их нет!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            await update.message.reply_text("Все ошибки в морфологических нормах исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
             user_data[user_id]['training_mode'] = None
             return
         word, correct_answer = random.choice(list(current_words.items()))
@@ -1061,7 +1061,8 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                         await send_question(update, context)
                     else:
                         user_choices_text = "\n".join([f"{'🟢' if choice in correct_features else '🔴'} {choice}" for choice in user_choices])
-                        correct_features_text = "\n".join([f"➤ ||{feature}||" for feature in correct_features])
+                        # Экранируем специальные символы для MarkdownV2
+                        correct_features_text = "\n".join([f"➤ ||{feature.replace('.', '\.').replace('(', '\(').replace(')', '\)')||" for feature in correct_features])
                         await update.message.reply_text(
                             f"**Результат: {correct_count} правильных из 3**\n\n" +
                             f"✦ Вы выбрали:\n{user_choices_text}\n\n" +
@@ -1081,7 +1082,6 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 await update.message.reply_text("Вы уже выбрали 3 признака. Дождитесь проверки.")
         else:
             await update.message.reply_text("Выберите признак из предложенных кнопок или вернитесь в главное меню.")
-
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
