@@ -969,7 +969,6 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         user_data[user_id]['user_choices'] = []
         user_data[user_id]['all_options'] = all_options
 
-
 # Функция для проверки ответа
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -1086,7 +1085,6 @@ async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         user_data[user_id]['training_mode'] = "errors"
 
-
 # Обработчик выбора в меню ошибок
 async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -1122,5 +1120,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
