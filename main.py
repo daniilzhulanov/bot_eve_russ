@@ -1030,19 +1030,27 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             user_choices.append(text)
             remaining = 3 - len(user_choices)
             if remaining > 0:  # Пока выбрано меньше 3 признаков
+                # Склонение слова "признак" для remaining
+                if remaining == 1:
+                    feature_text = "признак"
+                elif remaining == 2:
+                    feature_text = "признака"
+                else:
+                    feature_text = "признаков"  # На случай расширения логики в будущем
+
                 if text in correct_features:
                     await update.message.reply_text(
-                        f"✅ Верно! Вы выбрали: {text}. Выберите еще {remaining} признаков.",
+                        f"✅ Верно! Вы выбрали: {text}. Выберите еще {remaining} {feature_text}.",
                         reply_markup={"keyboard": [[{"text": option}] for option in all_options if option not in user_choices] + [[{"text": "Главное меню"}]], "resize_keyboard": True, "one_time_keyboard": True}
                     )
                 else:
                     await update.message.reply_text(
-                        f"❌ Неверно! Вы выбрали: {text}. Этот признак не относится к '{concept}'. Выберите еще {remaining} признаков.",
+                        f"❌ Неверно! Вы выбрали: {text}. Этот признак не относится к '{concept}'. Выберите еще {remaining} {feature_text}.",
                         reply_markup={"keyboard": [[{"text": option}] for option in all_options if option not in user_choices] + [[{"text": "Главное меню"}]], "resize_keyboard": True, "one_time_keyboard": True}
                     )
             else:  # Выбрано ровно 3 признака — сразу проверяем
                 correct_count = sum(1 for choice in user_choices if choice in correct_features)
-                # Склонение слова "признак"
+                # Склонение слова "признак" для correct_count
                 if correct_count == 1:
                     feature_text = "признак"
                 elif correct_count in (2, 3):
@@ -1063,7 +1071,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 else:
                     await update.message.reply_text(
                         f"Вы выбрали {correct_count} правильных {feature_text} из 3.\n" +
-                        "Вы выбрали:\n" +
+                        "Ваши выборы:\n" +
                         "\n".join([f"{'✅' if choice in correct_features else '❌'} {choice}" for choice in user_choices]) +
                         f"\n\nПравильные признаки для '{concept}':\n" +
                         "\n".join([f"➤ {feature}" for feature in correct_features]) +
