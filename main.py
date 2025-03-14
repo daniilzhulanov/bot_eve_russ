@@ -1071,7 +1071,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 else:
                     await update.message.reply_text(
                         f"Вы выбрали {correct_count} правильных {feature_text} из 3.\n" +
-                        "Ваши выборы:\n" +
+                        "Вы выбрали:\n" +
                         "\n".join([f"{'✅' if choice in correct_features else '❌'} {choice}" for choice in user_choices]) +
                         f"\n\nПравильные признаки для '{concept}':\n" +
                         "\n".join([f"➤ {feature}" for feature in correct_features]) +
