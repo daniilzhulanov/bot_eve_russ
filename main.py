@@ -1045,7 +1045,6 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         logger.info(f"Пользователь {user_id} ответил в mode={mode}, blitz_active сброшен")
         await send_question(update, context)
 
-
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -1057,11 +1056,9 @@ async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
     )
 
-
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
 
 # Запуск бота
 def main():
