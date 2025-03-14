@@ -826,7 +826,7 @@ async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if user_id not in user_data:
         init_user_data(user_id)
     await update.message.reply_text(
-        "💪 Что будем тренировать?",
+        "Что будем тренировать?",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
 
@@ -880,7 +880,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     await update.message.reply_text(
-        "💪 Что будем тренировать?",
+        "Что будем тренировать?",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
     user_data[user_id]['training_mode'] = None
