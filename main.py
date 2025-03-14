@@ -1072,11 +1072,10 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                             parse_mode="Markdown"
                         )
                         user_data[user_id]['user_choices'] = []
-                        keyboard = [[{"text": f"🟡 {option}"}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
+                        keyboard = [[{"text": f"{option}"}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
                         await update.message.reply_text(
                             f"**Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
-                            "✦ Нажми на кнопки ниже, чтобы выбрать.\n" +
-                            "✦ Выбирай внимательно, длинные признаки полностью видны на кнопках!",
+                            "✦ Нажми на кнопки ниже, чтобы выбрать.\n",
                             reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
                             parse_mode="Markdown"
                         )
