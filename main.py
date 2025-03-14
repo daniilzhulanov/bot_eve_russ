@@ -1042,10 +1042,15 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                     )
             else:  # Выбрано ровно 3 признака — сразу проверяем
                 correct_count = sum(1 for choice in user_choices if choice in correct_features)
+                # Экранируем специальные символы для Markdown
+                escaped_user_choices = [choice.replace('.', r'\.') for choice in user_choices]
+                escaped_correct_features = [feature.replace('.', r'\.') for feature in correct_features]
+                
                 if correct_count == 3:
                     await update.message.reply_text(
-                        f"🎉 Поздравляю! Вы правильно выбрали все три признака для '{concept}':\n" +
-                        "\n".join(correct_features)
+                        f"**🎉 Поздравляю! Вы правильно выбрали все три признака для '{concept}':**\n" +
+                        "\n".join([f"➤ *{feature}*" for feature in escaped_correct_features]),
+                        parse_mode="Markdown"
                     )
                     user_data[user_id]['current_concept'] = None
                     user_data[user_id]['correct_features'] = []
@@ -1054,11 +1059,13 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                     await send_question(update, context)
                 else:
                     await update.message.reply_text(
-                        f"Вы выбрали {correct_count} правильных признаков из 3. Вот ваши выборы:\n" +
-                        "\n".join(user_choices) +
-                        f"\nПравильные признаки для '{concept}':\n" +
-                        "\n".join(correct_features) +
-                        "\nПопробуйте снова с этим же понятием."
+                        f"**Вы выбрали {correct_count} правильных признаков из 3\.**\n" +
+                        "Ваши выборы:\n" +
+                        "\n".join([f"{'✅' if choice in correct_features else '❌'} {escaped_choice}" for escaped_choice, choice in zip(escaped_user_choices, user_choices)]) +
+                        f"\n\nПравильные признаки для '{concept}':\n" +
+                        "\n".join([f"➤ {feature}" for feature in escaped_correct_features]) +
+                        "\n\nПопробуйте снова с этим же понятием.",
+                        parse_mode="Markdown"
                     )
                     user_data[user_id]['user_choices'] = []
                     keyboard = [[{"text": f}] for f in all_options] + [[{"text": "Главное меню"}]]
