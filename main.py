@@ -931,7 +931,6 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, mod
     user_data[user_id]['training_mode'] = f"{mode}_errors" if use_errors else mode
     await send_question(update, context)
 
-
 # Функция для отправки вопроса
 async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -1135,7 +1134,6 @@ async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             reply_markup={"keyboard": errors_menu_keyboard, "resize_keyboard": True}
         )
         user_data[user_id]['training_mode'] = "errors"
-
 
 # Обработчик выбора в меню ошибок
 async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
