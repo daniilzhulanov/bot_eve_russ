@@ -1030,7 +1030,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if text in all_options and text not in user_choices:
             user_choices.append(text)
             remaining = 3 - len(user_choices)
-            if len(user_choices) <= 3:
+            if remaining > 0:  # Пока не выбрано 3 признака
                 if text in correct_features:
                     await update.message.reply_text(
                         f"**✅ Верно!**\n" +
@@ -1048,43 +1048,39 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                         reply_markup={"keyboard": [[{"text": option}] for option in all_options if option not in user_choices] + [[{"text": "🔙 Главное меню"}]], "resize_keyboard": True, "one_time_keyboard": True},
                         parse_mode="Markdown"
                     )
-
-                if len(user_choices) == 3:
-                    correct_count = sum(1 for choice in user_choices if choice in correct_features)
-                    if correct_count == 3:
-                        await update.message.reply_text(
-                            f"**🎉 Поздравляю! Вы правильно выбрали все три {decline_features(3)} для '{concept}':**\n\n" +
-                            "\n".join([f"➤ *{feature}*" for feature in correct_features]) +
-                            "\n\n✦ Переходим к следующему вопросу!",
-                            parse_mode="Markdown"
-                        )
-                        user_data[user_id]['current_concept'] = None
-                        user_data[user_id]['correct_features'] = []
-                        user_data[user_id]['user_choices'] = []
-                        user_data[user_id]['all_options'] = []
-                        await send_question(update, context)
-                    else:
-                        user_choices_text = "\n".join([f"{'🟢' if choice in correct_features else '🔴'} {choice}" for choice in user_choices])
-                        # Экранируем специальные символы вне f-строки
-                        escaped_features = [feature.replace('.', r'.').replace('(', r'(').replace(')', r')') for feature in correct_features]
-                        correct_features_text = "\n".join([f"➤ ||{feature}||" for feature in escaped_features])
-                        await update.message.reply_text(
-                            f"**Результат: {correct_count} правильных из 3**\n\n" +
-                            f"✦ Вы выбрали:\n{user_choices_text}\n\n" +
-                            f"✦ Правильные признаки для '{concept}':\n{correct_features_text}\n\n" +
-                            f"Попробуйте снова с этим же понятием!",
-                            parse_mode="MarkdownV2"
-                        )
-                        user_data[user_id]['user_choices'] = []
-                        keyboard = [[{"text": option}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
-                        await update.message.reply_text(
-                            f"**Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
-                            "✦ Нажми на кнопки ниже, чтобы выбрать.",
-                            reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
-                            parse_mode="Markdown"
-                        )
-            else:
-                await update.message.reply_text("Вы уже выбрали 3 признака. Дождитесь проверки.")
+            else:  # Выбрано ровно 3 признака — сразу проверяем
+                correct_count = sum(1 for choice in user_choices if choice in correct_features)
+                if correct_count == 3:
+                    await update.message.reply_text(
+                        f"**🎉 Поздравляю! Вы правильно выбрали все три {decline_features(3)} для '{concept}':**\n\n" +
+                        "\n".join([f"➤ *{feature}*" for feature in correct_features]) +
+                        "\n\n✦ Переходим к следующему вопросу!",
+                        parse_mode="Markdown"
+                    )
+                    user_data[user_id]['current_concept'] = None
+                    user_data[user_id]['correct_features'] = []
+                    user_data[user_id]['user_choices'] = []
+                    user_data[user_id]['all_options'] = []
+                    await send_question(update, context)
+                else:
+                    user_choices_text = "\n".join([f"{'🟢' if choice in correct_features else '🔴'} {choice}" for choice in user_choices])
+                    escaped_features = [feature.replace('.', r'.').replace('(', r'(').replace(')', r')') for feature in correct_features]
+                    correct_features_text = "\n".join([f"➤ ||{feature}||" for feature in escaped_features])
+                    await update.message.reply_text(
+                        f"**Результат: {correct_count} правильных из 3**\n\n" +
+                        f"✦ Вы выбрали:\n{user_choices_text}\n\n" +
+                        f"✦ Правильные признаки для '{concept}':\n{correct_features_text}\n\n" +
+                        f"Попробуйте снова с этим же понятием!",
+                        parse_mode="MarkdownV2"
+                    )
+                    user_data[user_id]['user_choices'] = []
+                    keyboard = [[{"text": option}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
+                    await update.message.reply_text(
+                        f"**Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
+                        "✦ Нажми на кнопки ниже, чтобы выбрать.",
+                        reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
+                        parse_mode="Markdown"
+                    )
         else:
             await update.message.reply_text("Выберите признак из предложенных кнопок или вернитесь в главное меню.")
 
