@@ -760,7 +760,7 @@ user_data = {}
 main_menu_keyboard = [
     [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Морфологические нормы"}],
     [{"text": "Общество. 18 задание"}], 
-    [{"text": "Ошибки"}]
+    {"text": "Ошибки"}]
 ]
 
 # Клавиатура для подменю "Общество. 18 задание"
@@ -954,10 +954,10 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         incorrect_features = random.sample(all_features, 3)  # 3 неверных признака
         all_options = correct_features + incorrect_features
         random.shuffle(all_options)
-        keyboard = [[{"text": f"{option}"}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
+        keyboard = [[{"text": option}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
         await update.message.reply_text(
             f"**Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
-            "✦ Нажми на кнопки ниже, чтобы выбрать признак.\n",
+            "✦ Нажми на кнопки ниже, чтобы выбрать.",
             reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
             parse_mode="Markdown"
         )
@@ -970,9 +970,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
-    if text.startswith("🟡 "):  # Убираем эмодзи из текста ответа
-        text = text[2:].strip()
-    elif text.startswith("🔙 "):
+    if text.startswith("🔙 "):  # Убираем эмодзи из текста ответа для "Главное меню"
         text = text[2:].strip()
 
     if text == "Главное меню":
@@ -1063,19 +1061,19 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                         await send_question(update, context)
                     else:
                         user_choices_text = "\n".join([f"{'🟢' if choice in correct_features else '🔴'} {choice}" for choice in user_choices])
-                        correct_features_text = "\n".join([f"➤ *{feature}*" for feature in correct_features])
+                        correct_features_text = "\n".join([f"➤ ||{feature}||" for feature in correct_features])
                         await update.message.reply_text(
                             f"**Результат: {correct_count} правильных из 3**\n\n" +
                             f"✦ Вы выбрали:\n{user_choices_text}\n\n" +
                             f"✦ Правильные признаки для '{concept}':\n{correct_features_text}\n\n" +
                             f"Попробуйте снова с этим же понятием!",
-                            parse_mode="Markdown"
+                            parse_mode="MarkdownV2"
                         )
                         user_data[user_id]['user_choices'] = []
-                        keyboard = [[{"text": f"{option}"}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
+                        keyboard = [[{"text": option}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
                         await update.message.reply_text(
                             f"**Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
-                            "✦ Нажми на кнопки ниже, чтобы выбрать.\n",
+                            "✦ Нажми на кнопки ниже, чтобы выбрать.",
                             reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
                             parse_mode="Markdown"
                         )
@@ -1083,7 +1081,6 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 await update.message.reply_text("Вы уже выбрали 3 признака. Дождитесь проверки.")
         else:
             await update.message.reply_text("Выберите признак из предложенных кнопок или вернитесь в главное меню.")
-
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1100,7 +1097,6 @@ async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             reply_markup={"keyboard": errors_menu_keyboard, "resize_keyboard": True}
         )
         user_data[user_id]['training_mode'] = "errors"
-
 
 # Обработчик выбора в меню ошибок
 async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1125,7 +1121,6 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
                 await start_training(update, context, mode="morphology", use_errors=True)
         elif text == "Главное меню":
             await send_main_menu(update, context)
-
 
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
