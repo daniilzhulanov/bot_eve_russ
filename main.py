@@ -957,7 +957,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         incorrect_features = random.sample(all_features, 3)  # 3 неверных признака
         all_options = correct_features + incorrect_features
         random.shuffle(all_options)
-        keyboard = [[{"text": option}] for option in all_options] + [[{"text": "🔙 Главное меню"}]]
+        keyboard = [[{"text": option}] for option in all_options] + [[{"text": "Главное меню"}]]
         await update.message.reply_text(
             f"**Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
             "✦ Нажми на кнопки ниже, чтобы выбрать.",
