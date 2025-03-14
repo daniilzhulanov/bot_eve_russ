@@ -1,7 +1,6 @@
 import os
 import logging
 import random
-import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -10,19 +9,16 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise ValueError("Токен не найден. Установите переменную окружения TOKEN.")
 
-
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
-
 # Отключаем логи httpx на уровне INFO
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
-
 
 # Словари для существующих режимов
 words = {
@@ -133,8 +129,6 @@ words = {
     "звонит": ["звонИт", "звОнит"],
     "кашлянуть": ["кАшлянуть", "кашлянУть"],
     "клала": ["клАла", "клалА"],
-    "крала": ["крАла", "кралА"],
-    "стлала": ["стлАла", "стлалА"],
     "клеить": ["клЕить", "клеИть"],
     "кралась": ["крАлась", "кралАсь"],
     "кровоточить": ["кровоточИть", "кровотОчить"],
@@ -773,20 +767,31 @@ law_concepts = {
     "потребитель": ["лицо, которое покупает товар (услуги) для личных нужд", "не нацелен на получение прибыли", "стремится приобрести товар с максимальной пользой"],
     "юридическое лицо": ["коммерческая и некоммерческая организация", "имеет в собственности или управлении обособленное имущество", "может от своего имени вступать в гражданские правоотношения", "может быть истцом и ответчиком в суде"]
 }
+
 # Хранилище данных пользователей
 user_data = {}
 
-# Клавиатура для главного меню (добавлена кнопка "Блиц")
+# Клавиатура для главного меню
 main_menu_keyboard = [
     [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Морфологические нормы"}],
     [{"text": "Общество. 18 задание"}], 
-    [{"text": "Блиц"}, {"text": "Ошибки"}]
+    [{"text": "Ошибки"}]
 ]
-blitz_menu_keyboard = [
-    [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}],
+
+# Клавиатура для подменю "Общество. 18 задание"
+society_18_menu_keyboard = [
+    [{"text": "Экономика"}, {"text": "Политика"}, {"text": "Социальная сфера"}],
+    [{"text": "Духовная сфера"}, {"text": "Общество"}, {"text": "Человек"}],
+    [{"text": "Право"}, {"text": "Главное меню"}]
+]
+
+# Клавиатура для меню ошибок
+errors_menu_keyboard = [
+    [{"text": "Ударения"}, {"text": "ПРЕ - ПРИ"}, {"text": "Морфологические нормы"}],
     [{"text": "Главное меню"}]
 ]
 
+# Клавиатура для ПРЕ - ПРИ
 pre_pri_keyboard = [
     [{"text": "Е"}, {"text": "И"}],
     [{"text": "Главное меню"}]
@@ -798,13 +803,25 @@ application = Application.builder().token(TOKEN).build()
 # Функция инициализации данных пользователя
 def init_user_data(user_id):
     user_data[user_id] = {
-        'errors': {'accents': [], 'pre_pri': []},
+        'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
         'training_mode': None,
         'current_word': None,
         'correct_option': None,
-        'blitz_active': False,
-        'blitz_message_id': None
+        'current_concept': None,
+        'correct_features': [],
+        'user_choices': [],
+        'all_options': [],
+        'society_18_submode': None
     }
+
+# Функция для правильного склонения слова "признак"
+def decline_features(count):
+    if count % 10 == 1 and count % 100 != 11:
+        return "признак"
+    elif count % 10 in [2, 3, 4] and count % 100 not in [12, 13, 14]:
+        return "признака"
+    else:
+        return "признаков"
 
 # Приветственное сообщение и главное меню
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -812,79 +829,48 @@ async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if user_id not in user_data:
         init_user_data(user_id)
     await update.message.reply_text(
-        "💪 Что будем тренировать?",
+        "Что будем тренировать?",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
 
-# Функция обратного отсчёта для режима "Блиц"
-async def blitz_countdown(context: ContextTypes.DEFAULT_TYPE):
-    job = context.job
-    user_id = job.data['user_id']
-    chat_id = job.data['chat_id']
-    message_id = user_data[user_id]['blitz_message_id']
-    mode = user_data[user_id]['training_mode']
-    word = user_data[user_id]['current_word']
-    correct_option = user_data[user_id]['correct_option']
-
-    logger.info(f"Запуск таймера для пользователя {user_id}, mode={mode}, message_id={message_id}")
-
-    countdown = [10, 5, 3, 2, 1, 0]
-    for seconds in countdown:
-        if not user_data[user_id]['blitz_active']:
-            logger.info(f"Таймер прерван для {user_id}: пользователь ответил")
-            return
-        try:
-            if seconds > 0:
-                text = f"🎯 Выбери правильное ударение для слова *{word}*: ⚡ Осталось {seconds} сек." if mode == "blitz_accents" else \
-                       f"🎯 Выбери правильную букву: *{word}*: ⚡ Осталось {seconds} сек."
-                await context.bot.edit_message_text(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    text=text,
-                    parse_mode="Markdown"
-                )
-                logger.info(f"Обновлено сообщение для {user_id}: {seconds} сек.")
-            else:
-                text = f"⏰ Время вышло! Правильный ответ: {correct_option}"
-                await context.bot.edit_message_text(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    text=text,
-                    parse_mode="Markdown"
-                )
-                logger.info(f"Время вышло для {user_id}, правильный ответ: {correct_option}")
-                if mode == "blitz_accents" and word not in user_data[user_id]['errors']['accents']:
-                    user_data[user_id]['errors']['accents'].append(word)
-                elif mode == "blitz_pre_pri" and word not in user_data[user_id]['errors']['pre_pri']:
-                    user_data[user_id]['errors']['pre_pri'].append(word)
-                user_data[user_id]['blitz_active'] = False
-                await send_question(job.data['update'], context)
-            if seconds > 0:
-                await asyncio.sleep(1 if seconds > 5 else 2 if seconds > 1 else 1)
-        except Exception as e:
-            logger.error(f"Ошибка в blitz_countdown для {user_id}: {e}")
-            break
-
+# Обработчик текстовых сообщений
 # Обработчик текстовых сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
 
     if user_id not in user_data:
-        init_user_data(user_id)
+        user_data[user_id] = {
+            'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
+            'training_mode': None,
+            'current_word': None,
+            'correct_option': None,
+            'current_concept': None,
+            'correct_features': [],
+            'user_choices': [],
+            'all_options': [],
+            'society_18_submode': None
+        }
 
     if text == "Ударения":
+        logger.info(f"Пользователь {user_id} выбрал режим 'Ударения'")
         await start_training(update, context, mode="accents", use_errors=False)
     elif text == "ПРЕ - ПРИ":
+        logger.info(f"Пользователь {user_id} выбрал режим 'ПРЕ - ПРИ'")
         await start_training(update, context, mode="pre_pri", use_errors=False)
-    elif text == "Блиц":
-        await show_blitz_menu(update, context)
+    elif text == "Морфологические нормы":
+        logger.info(f"Пользователь {user_id} выбрал режим 'Морфологические нормы'")
+        await start_training(update, context, mode="morphology", use_errors=False)
+    elif text == "Общество. 18 задание":
+        logger.info(f"Пользователь {user_id} выбрал режим 'Общество. 18 задание'")
+        await show_society_18_menu(update, context)
     elif text == "Ошибки":
+        logger.info(f"Пользователь {user_id} выбрал режим 'Ошибки'")
         await show_errors_menu(update, context)
     elif text == "Главное меню":
         await send_main_menu(update, context)
-    elif user_data[user_id]['training_mode'] == "blitz" and not user_data[user_id]['blitz_active']:
-        await handle_blitz_choice(update, context)
+    elif user_data[user_id]['training_mode'] == "society_18" and user_data[user_id]['society_18_submode'] is None:
+        await handle_society_18_choice(update, context)
     elif user_data[user_id]['training_mode'] is not None:
         await check_answer(update, context)
     else:
@@ -897,48 +883,55 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     await update.message.reply_text(
-        "💪 Что будем тренировать?",
+        "Что будем тренировать?",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
     user_data[user_id]['training_mode'] = None
-    user_data[user_id]['blitz_active'] = False
+    user_data[user_id]['society_18_submode'] = None
 
-# Функция для показа меню "Блиц"
-async def show_blitz_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# Функция для показа подменю "Общество. 18 задание"
+async def show_society_18_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     await update.message.reply_text(
-        "⚡ Выбери раздел для режима 'Блиц' (10 секунд на ответ):",
-        reply_markup={"keyboard": blitz_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
+        "🎯 Выбери раздел для тренировки:",
+        reply_markup={"keyboard": society_18_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
-    user_data[user_id]['training_mode'] = "blitz"
-    user_data[user_id]['blitz_active'] = False
+    user_data[user_id]['training_mode'] = "society_18"
+    user_data[user_id]['society_18_submode'] = None
 
-# Обработчик выбора в меню "Блиц"
-async def handle_blitz_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# Обработчик выбора в подменю "Общество. 18 задание"
+async def handle_society_18_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     text = update.message.text.strip()
 
-    if text == "Ударения":
-        await start_training(update, context, mode="blitz_accents", use_errors=False)
-    elif text == "ПРЕ - ПРИ":
-        await start_training(update, context, mode="blitz_pre_pri", use_errors=False)
+    if text in ["Экономика", "Политика", "Социальная сфера", "Духовная сфера", "Общество", "Человек", "Право"]:
+        user_data[user_id]['society_18_submode'] = text.lower()
+        await start_training(update, context, mode="society_18", use_errors=False)
     elif text == "Главное меню":
         await send_main_menu(update, context)
     else:
         await update.message.reply_text(
-            "⚡ Выбери раздел из предложенных:",
-            reply_markup={"keyboard": blitz_menu_keyboard, "resize_keyboard": True}
+            "🎯 Выбери раздел из предложенных:",
+            reply_markup={"keyboard": society_18_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
         )
 
 # Функция для начала тренировки
 async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str, use_errors: bool = False) -> None:
     user_id = update.effective_chat.id
     if user_id not in user_data:
-        init_user_data(user_id)
+        user_data[user_id] = {
+            'errors': {'accents': [], 'pre_pri': [], 'morphology': []},
+            'training_mode': None,
+            'current_word': None,
+            'correct_option': None,
+            'current_concept': None,
+            'correct_features': [],
+            'user_choices': [],
+            'all_options': [],
+            'society_18_submode': None
+        }
 
-    user_data[user_id]['training_mode'] = mode
-    user_data[user_id]['blitz_active'] = mode.startswith("blitz")
-    logger.info(f"Старт тренировки для {user_id}: mode={mode}, blitz_active={user_data[user_id]['blitz_active']}")
+    user_data[user_id]['training_mode'] = f"{mode}_errors" if use_errors else mode
     await send_question(update, context)
 
 # Функция для отправки вопроса
@@ -946,69 +939,71 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_id = update.effective_chat.id
     mode = user_data[user_id]['training_mode']
 
-    if mode in ("accents", "blitz_accents"):
-        current_words = words
+    if mode in ("accents", "accents_errors"):
+        current_words = words if mode == "accents" else {word: words[word] for word in user_data[user_id]['errors']['accents']}
         if not current_words:
-            await update.message.reply_text("🎉 Нет слов для тренировки!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            await update.message.reply_text("🎉 Все ошибки в ударениях исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
             user_data[user_id]['training_mode'] = None
-            user_data[user_id]['blitz_active'] = False
             return
         word, options = random.choice(list(current_words.items()))
         correct_option = options[0]
         options_list = options.copy()
         random.shuffle(options_list)
         keyboard = [[{"text": option}] for option in options_list] + [[{"text": "Главное меню"}]]
-        if mode == "blitz_accents":
-            message = await update.message.reply_text(
-                f"🎯 Выбери правильное ударение для слова *{word}*: ⚡ Осталось 10 сек.",
-                reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
-                parse_mode="Markdown"
-            )
-            user_data[user_id]['blitz_message_id'] = message.message_id
-            context.job_queue.run_once(
-                blitz_countdown, 0,
-                data={'user_id': user_id, 'chat_id': update.effective_chat.id, 'update': update},
-                name=f"blitz_{user_id}"
-            )
-            logger.info(f"Отправлен вопрос в режиме Блиц для {user_id}, message_id={message.message_id}")
-        else:
-            await update.message.reply_text(
-                f"🎯 Выбери правильное ударение для слова *{word}*:",
-                reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
-                parse_mode="Markdown"
-            )
+        await update.message.reply_text(f"🎯 Выбери правильное ударение для слова *{word}*:", reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}, parse_mode="Markdown")
         user_data[user_id]['current_word'] = word
         user_data[user_id]['correct_option'] = correct_option
 
-    elif mode in ("pre_pri", "blitz_pre_pri"):
-        current_words = pre_pri_words
+    elif mode in ("pre_pri", "pre_pri_errors"):
+        current_words = pre_pri_words if mode == "pre_pri" else {word: pre_pri_words[word] for word in user_data[user_id]['errors']['pre_pri']}
         if not current_words:
-            await update.message.reply_text("🎉 Нет слов для тренировки!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            await update.message.reply_text("🎉 Все ошибки в ПРЕ - ПРИ исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
             user_data[user_id]['training_mode'] = None
-            user_data[user_id]['blitz_active'] = False
             return
         word, correct_answer = random.choice(list(current_words.items()))
-        if mode == "blitz_pre_pri":
-            message = await update.message.reply_text(
-                f"🎯 Выбери правильную букву: *{word}*: ⚡ Осталось 10 сек.",
-                reply_markup={"keyboard": pre_pri_keyboard, "resize_keyboard": True, "one_time_keyboard": True},
-                parse_mode="Markdown"
-            )
-            user_data[user_id]['blitz_message_id'] = message.message_id
-            context.job_queue.run_once(
-                blitz_countdown, 0,
-                data={'user_id': user_id, 'chat_id': update.effective_chat.id, 'update': update},
-                name=f"blitz_{user_id}"
-            )
-            logger.info(f"Отправлен вопрос в режиме Блиц для {user_id}, message_id={message.message_id}")
-        else:
-            await update.message.reply_text(
-                f"🎯 Выбери правильную букву: *{word}*",
-                reply_markup={"keyboard": pre_pri_keyboard, "resize_keyboard": True, "one_time_keyboard": True},
-                parse_mode="Markdown"
-            )
+        await update.message.reply_text(f"🎯 Выбери правильную букву: *{word}*", reply_markup={"keyboard": pre_pri_keyboard, "resize_keyboard": True, "one_time_keyboard": True}, parse_mode="Markdown")
         user_data[user_id]['current_word'] = word
         user_data[user_id]['correct_option'] = "Е" if "Е" in correct_answer else "И"
+
+    elif mode in ("morphology", "morphology_errors"):
+        current_words = morphology_words if mode == "morphology" else {word: morphology_words[word] for word in user_data[user_id]['errors']['morphology']}
+        if not current_words:
+            await update.message.reply_text("🎉 Все ошибки в морфологических нормах исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            user_data[user_id]['training_mode'] = None
+            return
+        word, correct_answer = random.choice(list(current_words.items()))
+        await update.message.reply_text(f"🎯 Напиши правильную форму слова: {word}", reply_markup={"keyboard": [[{"text": "Главное меню"}]], "resize_keyboard": True})
+        user_data[user_id]['current_word'] = word
+        user_data[user_id]['correct_option'] = correct_answer
+
+    elif mode == "society_18":
+        submode = user_data[user_id]['society_18_submode']
+        concepts = {
+            "экономика": economy_concepts,
+            "политика": politics_concepts,
+            "социальная сфера": social_concepts,
+            "духовная сфера": spiritual_concepts,
+            "общество": society_concepts,
+            "человек": human_concepts,
+            "право": law_concepts
+        }[submode]
+        concept, features = random.choice(list(concepts.items()))
+        correct_features = random.sample(features, min(3, len(features)))  # 3 случайных признака
+        all_features = [f for c, fs in concepts.items() if c != concept for f in fs]
+        incorrect_features = random.sample(all_features, 3)  # 3 неверных признака
+        all_options = correct_features + incorrect_features
+        random.shuffle(all_options)
+        keyboard = [[{"text": option}] for option in all_options] + [[{"text": "Главное меню"}]]
+        await update.message.reply_text(
+            f"**📚 Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
+            "✦ Нажми на кнопки ниже, чтобы выбрать.",
+            reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
+            parse_mode="Markdown"
+        )
+        user_data[user_id]['current_concept'] = concept
+        user_data[user_id]['correct_features'] = correct_features
+        user_data[user_id]['user_choices'] = []
+        user_data[user_id]['all_options'] = all_options
 
 # Функция для проверки ответа
 async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1021,47 +1016,155 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     mode = user_data[user_id]['training_mode']
 
-    if mode in ("accents", "blitz_accents"):
+    if mode in ("accents", "accents_errors"):
         correct_option = user_data[user_id]['correct_option']
         word = user_data[user_id]['current_word']
         if text == correct_option:
             await update.message.reply_text(f"✅ Правильно! {correct_option}")
+            if mode == "accents_errors" and word in user_data[user_id]['errors']['accents']:
+                user_data[user_id]['errors']['accents'].remove(word)
         else:
             await update.message.reply_text(f"❌ Неправильно. Правильный ответ: {correct_option}")
-            if word not in user_data[user_id]['errors']['accents']:
+            if mode == "accents" and word not in user_data[user_id]['errors']['accents']:
                 user_data[user_id]['errors']['accents'].append(word)
-        user_data[user_id]['blitz_active'] = False
-        logger.info(f"Пользователь {user_id} ответил в mode={mode}, blitz_active сброшен")
         await send_question(update, context)
 
-    elif mode in ("pre_pri", "blitz_pre_pri"):
+    elif mode in ("pre_pri", "pre_pri_errors"):
         word = user_data[user_id]['current_word']
         correct_answer = pre_pri_words[word]
         correct_letter = "Е" if "Е" in correct_answer else "И"
         if text == correct_letter:
             await update.message.reply_text(f"✅ Правильно! Верное написание: {correct_answer}")
+            if mode == "pre_pri_errors" and word in user_data[user_id]['errors']['pre_pri']:
+                user_data[user_id]['errors']['pre_pri'].remove(word)
         else:
             await update.message.reply_text(f"❌ Неправильно. Верное написание: {correct_answer}")
-            if word not in user_data[user_id]['errors']['pre_pri']:
+            if mode == "pre_pri" and word not in user_data[user_id]['errors']['pre_pri']:
                 user_data[user_id]['errors']['pre_pri'].append(word)
-        user_data[user_id]['blitz_active'] = False
-        logger.info(f"Пользователь {user_id} ответил в mode={mode}, blitz_active сброшен")
         await send_question(update, context)
+
+    elif mode in ("morphology", "morphology_errors"):
+        word = user_data[user_id]['current_word']
+        correct_option = user_data[user_id]['correct_option']
+        if text.lower() == correct_option.lower():
+            await update.message.reply_text(f"✅ Верно! Правильное написание: {correct_option}")
+            if mode == "morphology_errors" and word in user_data[user_id]['errors']['morphology']:
+                user_data[user_id]['errors']['morphology'].remove(word)
+        else:
+            await update.message.reply_text(f"❌ Ошибка. Правильное написание: {correct_option}")
+            if mode == "morphology" and word not in user_data[user_id]['errors']['morphology']:
+                user_data[user_id]['errors']['morphology'].append(word)
+        await send_question(update, context)
+
+    elif mode == "society_18":
+        concept = user_data[user_id]['current_concept']
+        correct_features = user_data[user_id]['correct_features']
+        all_options = user_data[user_id]['all_options']
+        user_choices = user_data[user_id]['user_choices']
+
+        if text in all_options and text not in user_choices:
+            user_choices.append(text)
+            remaining = 3 - len(user_choices)
+            if remaining > 0:  # Пока выбрано меньше 3 признаков
+                # Склонение слова "признак" для remaining
+                if remaining == 1:
+                    feature_text = "признак"
+                elif remaining == 2:
+                    feature_text = "признака"
+                else:
+                    feature_text = "признаков"  # На случай расширения логики в будущем
+
+                if text in correct_features:
+                    await update.message.reply_text(
+                        f"✅ Верно! Вы выбрали: {text}. Выберите еще {remaining} {feature_text}.",
+                        reply_markup={"keyboard": [[{"text": option}] for option in all_options if option not in user_choices] + [[{"text": "Главное меню"}]], "resize_keyboard": True, "one_time_keyboard": True}
+                    )
+                else:
+                    await update.message.reply_text(
+                        f"❌ Неверно! Вы выбрали: {text}. Этот признак не относится к '{concept}'. Выберите еще {remaining} {feature_text}.",
+                        reply_markup={"keyboard": [[{"text": option}] for option in all_options if option not in user_choices] + [[{"text": "Главное меню"}]], "resize_keyboard": True, "one_time_keyboard": True}
+                    )
+            else:  # Выбрано ровно 3 признака — сразу проверяем
+                correct_count = sum(1 for choice in user_choices if choice in correct_features)
+                # Склонение слова "признак" для correct_count
+                if correct_count == 1:
+                    feature_text = "признак"
+                elif correct_count in (2, 3):
+                    feature_text = "признака"
+                else:
+                    feature_text = "признаков"
+
+                if correct_count == 3:
+                    await update.message.reply_text(
+                        f"🎉 Поздравляю! Вы правильно выбрали все три признака для '{concept}':\n" +
+                        "\n".join([f"➤ {feature}" for feature in correct_features])
+                    )
+                    user_data[user_id]['current_concept'] = None
+                    user_data[user_id]['correct_features'] = []
+                    user_data[user_id]['user_choices'] = []
+                    user_data[user_id]['all_options'] = []
+                    await send_question(update, context)
+                else:
+                    await update.message.reply_text(
+                        f"Вы выбрали {correct_count} правильных {feature_text} из 3.\n" +
+                        "Вы выбрали:\n" +
+                        "\n".join([f"{'✅' if choice in correct_features else '❌'} {choice}" for choice in user_choices]) +
+                        f"\n\nПравильные признаки для '{concept}':\n" +
+                        "\n".join([f"➤ {feature}" for feature in correct_features]) +
+                        "\n\nПопробуйте снова с этим же понятием."
+                    )
+                    user_data[user_id]['user_choices'] = []
+                    keyboard = [[{"text": f}] for f in all_options] + [[{"text": "Главное меню"}]]
+                    await update.message.reply_text(
+                        f"Выбери ТРИ признака для '{concept}':",
+                        reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}
+                    )
+        else:
+            await update.message.reply_text("Выберите признак из предложенных или вернитесь в главное меню.")
 
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     errors = user_data[user_id]['errors']
-    accents_list = "\n".join(errors['accents']) if errors['accents'] else "Нет ошибок"
-    pre_pri_list = "\n".join(errors['pre_pri']) if errors['pre_pri'] else "Нет ошибок"
-    await update.message.reply_text(
-        f"Твои ошибки:\nУдарения:\n{accents_list}\n\nПРЕ - ПРИ:\n{pre_pri_list}",
-        reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
-    )
+    if not any(errors.values()):
+        await update.message.reply_text("У тебя нет ошибок, умничка!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+    else:
+        accents_list = "\n".join(errors['accents']) if errors['accents'] else "Нет ошибок"
+        pre_pri_list = "\n".join(errors['pre_pri']) if errors['pre_pri'] else "Нет ошибок"
+        morphology_list = "\n".join(errors['morphology']) if errors['morphology'] else "Нет ошибок"
+        await update.message.reply_text(
+            f"Твои ошибки:\nУдарения:\n{accents_list}\n\nПРЕ - ПРИ:\n{pre_pri_list}\n\nМорфологические нормы:\n{morphology_list}\n\nЧто исправлять?",
+            reply_markup={"keyboard": errors_menu_keyboard, "resize_keyboard": True}
+        )
+        user_data[user_id]['training_mode'] = "errors"
+
+# Обработчик выбора в меню ошибок
+async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_chat.id
+    text = update.message.text.strip()
+
+    if user_data[user_id]['training_mode'] == "errors":
+        if text == "Ударения":
+            if not user_data[user_id]['errors']['accents']:
+                await update.message.reply_text("У тебя нет ошибок в ударениях!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            else:
+                await start_training(update, context, mode="accents", use_errors=True)
+        elif text == "ПРЕ - ПРИ":
+            if not user_data[user_id]['errors']['pre_pri']:
+                await update.message.reply_text("У тебя нет ошибок в ПРЕ - ПРИ!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            else:
+                await start_training(update, context, mode="pre_pri", use_errors=True)
+        elif text == "Морфологические нормы":
+            if not user_data[user_id]['errors']['morphology']:
+                await update.message.reply_text("У тебя нет ошибок в морфологических нормах!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            else:
+                await start_training(update, context, mode="morphology", use_errors=True)
+        elif text == "Главное меню":
+            await send_main_menu(update, context)
 
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda update, context: handle_errors_choice(update, context) if user_data.get(update.effective_chat.id, {}).get('training_mode') == "errors" else handle_message(update, context)))
 
 # Запуск бота
 def main():
@@ -1069,4 +1172,4 @@ def main():
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
