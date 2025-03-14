@@ -826,7 +826,7 @@ async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if user_id not in user_data:
         init_user_data(user_id)
     await update.message.reply_text(
-        "Что будем тренировать?",
+        "💪 Что будем тренировать?",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
 
@@ -872,7 +872,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await check_answer(update, context)
     else:
         await update.message.reply_text(
-            "Пожалуйста, используй кнопки для навигации.",
+            "👇 Используй кнопки для навигации",
             reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True}
         )
 
@@ -880,7 +880,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     await update.message.reply_text(
-        "Что будем тренировать?",
+        "💪 Что будем тренировать?",
         reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
     user_data[user_id]['training_mode'] = None
@@ -890,7 +890,7 @@ async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def show_society_18_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
     await update.message.reply_text(
-        "Выбери раздел для тренировки:",
+        "🎯 Выбери раздел для тренировки:",
         reply_markup={"keyboard": society_18_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
     )
     user_data[user_id]['training_mode'] = "society_18"
@@ -908,7 +908,7 @@ async def handle_society_18_choice(update: Update, context: ContextTypes.DEFAULT
         await send_main_menu(update, context)
     else:
         await update.message.reply_text(
-            "Выбери раздел из предложенных:",
+            "🎯 Выбери раздел из предложенных:",
             reply_markup={"keyboard": society_18_menu_keyboard, "resize_keyboard": True, "one_time_keyboard": True}
         )
 
@@ -940,7 +940,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if mode in ("accents", "accents_errors"):
         current_words = words if mode == "accents" else {word: words[word] for word in user_data[user_id]['errors']['accents']}
         if not current_words:
-            await update.message.reply_text("Все ошибки в ударениях исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            await update.message.reply_text("🎉 Все ошибки в ударениях исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
             user_data[user_id]['training_mode'] = None
             return
         word, options = random.choice(list(current_words.items()))
@@ -948,29 +948,29 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         options_list = options.copy()
         random.shuffle(options_list)
         keyboard = [[{"text": option}] for option in options_list] + [[{"text": "Главное меню"}]]
-        await update.message.reply_text(f"Выбери правильное ударение: {word}", reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True})
+        await update.message.reply_text(f"🎯 Выбери правильное ударение для слова *{word}*:", reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True}, parse_mode="Markdown")
         user_data[user_id]['current_word'] = word
         user_data[user_id]['correct_option'] = correct_option
 
     elif mode in ("pre_pri", "pre_pri_errors"):
         current_words = pre_pri_words if mode == "pre_pri" else {word: pre_pri_words[word] for word in user_data[user_id]['errors']['pre_pri']}
         if not current_words:
-            await update.message.reply_text("Все ошибки в ПРЕ - ПРИ исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            await update.message.reply_text("🎉 Все ошибки в ПРЕ - ПРИ исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
             user_data[user_id]['training_mode'] = None
             return
         word, correct_answer = random.choice(list(current_words.items()))
-        await update.message.reply_text(f"Выбери правильную букву: {word}", reply_markup={"keyboard": pre_pri_keyboard, "resize_keyboard": True, "one_time_keyboard": True})
+        await update.message.reply_text(f"🎯 Выбери правильную букву: *{word}*", reply_markup={"keyboard": pre_pri_keyboard, "resize_keyboard": True, "one_time_keyboard": True}, parse_mode="Markdown")
         user_data[user_id]['current_word'] = word
         user_data[user_id]['correct_option'] = "Е" if "Е" in correct_answer else "И"
 
     elif mode in ("morphology", "morphology_errors"):
         current_words = morphology_words if mode == "morphology" else {word: morphology_words[word] for word in user_data[user_id]['errors']['morphology']}
         if not current_words:
-            await update.message.reply_text("Все ошибки в морфологических нормах исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
+            await update.message.reply_text("🎉 Все ошибки в морфологических нормах исправлены!", reply_markup={"keyboard": main_menu_keyboard, "resize_keyboard": True})
             user_data[user_id]['training_mode'] = None
             return
         word, correct_answer = random.choice(list(current_words.items()))
-        await update.message.reply_text(f"Напиши правильную форму слова: {word}", reply_markup={"keyboard": [[{"text": "Главное меню"}]], "resize_keyboard": True})
+        await update.message.reply_text(f"🎯 Напиши правильную форму слова: {word}", reply_markup={"keyboard": [[{"text": "Главное меню"}]], "resize_keyboard": True})
         user_data[user_id]['current_word'] = word
         user_data[user_id]['correct_option'] = correct_answer
 
@@ -993,7 +993,7 @@ async def send_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         random.shuffle(all_options)
         keyboard = [[{"text": option}] for option in all_options] + [[{"text": "Главное меню"}]]
         await update.message.reply_text(
-            f"**Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
+            f"**📚 Выбери ТРИ {decline_features(3)} для понятия '{concept}':**\n\n" +
             "✦ Нажми на кнопки ниже, чтобы выбрать.",
             reply_markup={"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
             parse_mode="Markdown"
