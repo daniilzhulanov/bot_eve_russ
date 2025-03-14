@@ -1082,6 +1082,7 @@ async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         else:
             await update.message.reply_text("Выберите признак из предложенных кнопок или вернитесь в главное меню.")
 
+
 # Функция для показа меню ошибок
 async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_chat.id
@@ -1097,6 +1098,7 @@ async def show_errors_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             reply_markup={"keyboard": errors_menu_keyboard, "resize_keyboard": True}
         )
         user_data[user_id]['training_mode'] = "errors"
+
 
 # Обработчик выбора в меню ошибок
 async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1122,9 +1124,11 @@ async def handle_errors_choice(update: Update, context: ContextTypes.DEFAULT_TYP
         elif text == "Главное меню":
             await send_main_menu(update, context)
 
+
 # Регистрация обработчиков
 application.add_handler(CommandHandler("start", send_welcome))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, lambda update, context: handle_errors_choice(update, context) if user_data.get(update.effective_chat.id, {}).get('training_mode') == "errors" else handle_message(update, context)))
+
 
 # Запуск бота
 def main():
